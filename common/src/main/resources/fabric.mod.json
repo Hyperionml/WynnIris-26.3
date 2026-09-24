@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "iris",
+  "id": "wynniris",
+  "provides": ["iris"],
   "version": "${version}",
   "name": "WynnIris",
   "description": "An Iris fork with Wynncraft glint shader effect support",

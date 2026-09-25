@@ -97,16 +97,15 @@ public class EntityPatcher {
 
 	// WynnIris mount armor overlay signal. CPU-built overlays keep the alpha=252/250
 	// markers for reliable armor-layer detection. Shader-side effects can be carried in
-	// the submit-time iris_Entity.z item slot with a high sentinel ID. The legacy green,
-	// near-white RGB, and alpha-effect forms are still recognized for safety.
+	// the submit-time iris_Entity.z item slot with a high sentinel ID. The legacy green and
+	// near-white RGB forms are still recognized for safety. Don't encode effects in a vertex
+	// alpha range: other mods tint whole models with it (Wynntils player ghosts use alpha 191).
 	private static final String IRISW_ARMOR_OVERLAY_ALPHA =
 		"int iris_wynn_armorOverlayAlpha = int(round(iris_Color.a * 255.0));";
-	private static final String IRISW_ARMOR_OVERLAY_EFFECT =
-		"int iris_wynn_armorOverlayEffect = (iris_wynn_armorOverlayAlpha >= 161 && iris_wynn_armorOverlayAlpha <= 192) ? iris_wynn_armorOverlayAlpha - 160 : 0;";
 	private static final String IRISW_ARMOR_OVERLAY_CPU_EFFECT =
 		"int iris_wynn_mountArmorCpuEffect = (iris_Entity.z >= 64001 && iris_Entity.z <= 64032) ? iris_Entity.z - 64000 : 0;";
 	private static final String IRISW_ARMOR_OVERLAY_DETECT =
-		"int iris_wynn_armorOverlayMode = (iris_wynn_armorOverlayAlpha == 252 || iris_wynn_armorOverlayEffect != 0"
+		"int iris_wynn_armorOverlayMode = (iris_wynn_armorOverlayAlpha == 252"
 			+ " || (iris_Color.r < 0.01 && iris_Color.b < 0.01 && int(round(iris_Color.g * 255.0)) == 252)"
 			+ " || (int(round(iris_Color.r * 255.0)) == 252 && int(round(iris_Color.g * 255.0)) == 255 && int(round(iris_Color.b * 255.0)) == 255)) ? 1"
 			+ " : (iris_wynn_armorOverlayAlpha == 250"
@@ -1249,11 +1248,9 @@ public class EntityPatcher {
 				IRISW_SIGNAL_DETECT,
 				IRISW_TRANSLUCENCY_DETECT,
 				IRISW_ARMOR_OVERLAY_ALPHA,
-				IRISW_ARMOR_OVERLAY_EFFECT,
 				IRISW_ARMOR_OVERLAY_CPU_EFFECT,
 				IRISW_ARMOR_OVERLAY_DETECT,
-				"int iris_wynn_armorOverlayShaderEffect = iris_wynn_mountArmorCpuEffect != 0 ? iris_wynn_mountArmorCpuEffect : iris_wynn_armorOverlayEffect;",
-				"iris_wynncraft_glint = iris_wynn_isSignal ? int(round(iris_Color.r * 255.0)) : iris_wynn_armorOverlayShaderEffect;",
+				"iris_wynncraft_glint = iris_wynn_isSignal ? int(round(iris_Color.r * 255.0)) : iris_wynn_mountArmorCpuEffect;",
 				"iris_wynncraft_translucency = iris_wynn_isTranslucent ? int(round(iris_Color.r * 255.0)) : 0;",
 				"iris_wynncraft_armor_overlay = iris_wynn_armorOverlayMode;",
 				"irisw_pos = iris_Position;",

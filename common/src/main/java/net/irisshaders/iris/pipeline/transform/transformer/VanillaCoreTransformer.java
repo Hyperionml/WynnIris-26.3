@@ -471,8 +471,7 @@ public class VanillaCoreTransformer {
 					"int(round(iris_Color.g * 255.0)) == 240 || int(round(iris_Color.g * 255.0)) == 235"
 					+ " || int(round(iris_Color.g * 255.0)) == 60 || int(round(iris_Color.g * 255.0)) == 58"
 					+ " || int(round(iris_Color.g * 255.0)) == 59";
-				String armorOverlayNeutral = "(int(round(iris_Color.a * 255.0)) == 252 || int(round(iris_Color.a * 255.0)) == 250"
-					+ " || (int(round(iris_Color.a * 255.0)) >= 161 && int(round(iris_Color.a * 255.0)) <= 192))"
+				String armorOverlayNeutral = "(int(round(iris_Color.a * 255.0)) == 252 || int(round(iris_Color.a * 255.0)) == 250)"
 					+ " || (iris_Color.r < 0.01 && iris_Color.b < 0.01"
 					+ " && (int(round(iris_Color.g * 255.0)) == 252 || int(round(iris_Color.g * 255.0)) == 250))"
 					+ " || ((int(round(iris_Color.r * 255.0)) == 252 || int(round(iris_Color.r * 255.0)) == 250)"

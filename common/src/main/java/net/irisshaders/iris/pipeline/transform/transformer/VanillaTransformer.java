@@ -141,8 +141,7 @@ public class VanillaTransformer {
 			// Floor at 0.10 (instead of 0.0) so level=100 VFX remains barely visible.
 			String translucencyAlphaFactor = "max(0.10, 1.0 - float(int(round(iris_Color.r * 255.0))) / 100.0)";
 			String translucencyBranch = "vec4(1.0, 1.0, 1.0, " + translucencyAlphaFactor + ")";
-			String armorOverlayNeutral = "(int(round(iris_Color.a * 255.0)) == 252 || int(round(iris_Color.a * 255.0)) == 250"
-				+ " || (int(round(iris_Color.a * 255.0)) >= 161 && int(round(iris_Color.a * 255.0)) <= 192))"
+			String armorOverlayNeutral = "(int(round(iris_Color.a * 255.0)) == 252 || int(round(iris_Color.a * 255.0)) == 250)"
 				+ " || (iris_Color.r < 0.01 && iris_Color.b < 0.01"
 				+ " && (int(round(iris_Color.g * 255.0)) == 252 || int(round(iris_Color.g * 255.0)) == 250))"
 				+ " || ((int(round(iris_Color.r * 255.0)) == 252 || int(round(iris_Color.r * 255.0)) == 250)"

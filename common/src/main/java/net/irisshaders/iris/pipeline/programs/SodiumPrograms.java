@@ -43,10 +43,17 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public class SodiumPrograms {
+	// Keep framebuffers and shaders as the constructor's only EnumMap.put calls, in that order, as
+	// in upstream Iris: Photonics 0.3.0's SodiumProgramsMixin (gone in 0.3.4) injects at
+	// INVOKE EnumMap.put ordinal 1 with an implicit @Local GlProgram, expecting shaders.put. So
+	// maps WynnIris adds here are declared as Map (their puts become INVOKEINTERFACE Map.put and
+	// aren't counted). If that mixin misses, SodiumPrograms fails to load and Iris falls back to
+	// vanilla. Keep the sources/flipStates puts above the `source == null` continue:
+	// refreshMainFramebuffers reads both for every pass.
 	private final EnumMap<Pass, GlFramebuffer> framebuffers = new EnumMap<>(Pass.class);
 	private final EnumMap<Pass, GlProgram<ChunkShaderInterface>> shaders = new EnumMap<>(Pass.class);
-	private final EnumMap<Pass, ProgramSource> sources = new EnumMap<>(Pass.class);
-	private final EnumMap<Pass, Supplier<ImmutableSet<Integer>>> flipStates = new EnumMap<>(Pass.class);
+	private final Map<Pass, ProgramSource> sources = new EnumMap<>(Pass.class);
+	private final Map<Pass, Supplier<ImmutableSet<Integer>>> flipStates = new EnumMap<>(Pass.class);
 	private final RenderTargets renderTargets;
 
 	private boolean hasBlockId;

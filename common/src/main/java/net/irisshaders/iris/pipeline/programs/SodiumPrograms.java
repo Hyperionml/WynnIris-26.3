@@ -22,6 +22,7 @@ import net.irisshaders.iris.pipeline.IrisRenderingPipeline;
 import net.irisshaders.iris.pipeline.transform.PatchShaderType;
 import net.irisshaders.iris.pipeline.transform.ShaderPrinter;
 import net.irisshaders.iris.pipeline.transform.TransformPatcher;
+import net.irisshaders.iris.shaderpack.loading.ProgramGroup;
 import net.irisshaders.iris.shaderpack.loading.ProgramId;
 import net.irisshaders.iris.shaderpack.materialmap.WorldRenderingSettings;
 import net.irisshaders.iris.shaderpack.programs.ProgramFallbackResolver;
@@ -218,8 +219,10 @@ public class SodiumPrograms {
 		}
 	}
 
+	// By program group rather than a fixed list, so passes other mods append to Pass (Photonics'
+	// SHADOW_VOXELS) are treated as shadow passes too. Same result for all six built-in passes.
 	private static boolean isShadowPass(Pass pass) {
-		return pass == Pass.SHADOW || pass == Pass.SHADOW_CUTOUT || pass == Pass.SHADOW_TRANS;
+		return pass.getOriginalId().getGroup() == ProgramGroup.Shadow;
 	}
 
 	public GlProgram<ChunkShaderInterface> getProgram(TerrainRenderPass pass) {

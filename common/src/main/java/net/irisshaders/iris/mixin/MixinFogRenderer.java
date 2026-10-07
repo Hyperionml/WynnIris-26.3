@@ -18,7 +18,7 @@ import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.material.FogType;
-import org.joml.Vector4f;
+import net.minecraft.client.renderer.fog.FogData;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -48,7 +48,7 @@ public class MixinFogRenderer {
 	@Unique
 	private static ResourceKey<net.minecraft.world.level.Level> iris$lastDimension = null;
 	@Inject(method = "setupFog", at = @At("HEAD"))
-	private void iris$setupLegacyWaterFog(Camera camera, int i, DeltaTracker deltaTracker, float f, ClientLevel clientLevel, CallbackInfoReturnable<Vector4f> cir) {
+	private void iris$setupLegacyWaterFog(Camera camera, int i, DeltaTracker deltaTracker, float f, ClientLevel clientLevel, CallbackInfoReturnable<FogData> cir) {
 		if (camera.getFluidInCamera() == FogType.WATER) {
 			Entity entity = camera.entity();
 
@@ -71,10 +71,10 @@ public class MixinFogRenderer {
 	}
 
 	@Inject(method = "setupFog", at = @At("RETURN"))
-	private void render(Camera camera, int i, DeltaTracker deltaTracker, float f, ClientLevel clientLevel, CallbackInfoReturnable<Vector4f> cir) {
-		float rawR = cir.getReturnValue().x;
-		float rawG = cir.getReturnValue().y;
-		float rawB = cir.getReturnValue().z;
+	private void render(Camera camera, int i, DeltaTracker deltaTracker, float f, ClientLevel clientLevel, CallbackInfoReturnable<FogData> cir) {
+		float rawR = cir.getReturnValue().color.x;
+		float rawG = cir.getReturnValue().color.y;
+		float rawB = cir.getReturnValue().color.z;
 
 		// Sun tint reduction target: a chroma-preserved version of the raw biome
 		// fog color, scaled to match the vanilla fog's luminance. This avoids the

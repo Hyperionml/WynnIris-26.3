@@ -171,7 +171,15 @@ public class Iris {
 		// 26.3: DefaultVertexFormat.NEW_ENTITY was renamed to DefaultVertexFormat.ENTITY.
 		VertexSerializerRegistry.instance().registerSerializer(DefaultVertexFormat.ENTITY, IrisVertexFormats.TERRAIN, new EntityToTerrainVertexSerializer());
 		VertexSerializerRegistry.instance().registerSerializer(IrisVertexFormats.ENTITY, IrisVertexFormats.TERRAIN, new IrisEntityToTerrainVertexSerializer());
-		VertexSerializerRegistry.instance().registerSerializer(DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP, IrisVertexFormats.GLYPH, new GlyphExtVertexSerializer());
+		// 26.3: the text/glyph format constant is POSITION_TEX_LIGHTMAP_COLOR.
+		// WynnIris's 1.21.11 tree registered the glyph serializer against the older
+		// POSITION_COLOR_TEX_LIGHTMAP (same elements, DIFFERENT order) - that still
+		// compiles because the constant exists, but it is not the format Sodium's text
+		// path uses, so the registry lookup missed and Sodium tried to generate a
+		// serializer at runtime:
+		//   RuntimeException: Source format is missing element Normal RGBA8_SNORM
+		//   offset:28 as required by destination format
+		VertexSerializerRegistry.instance().registerSerializer(DefaultVertexFormat.POSITION_TEX_LIGHTMAP_COLOR, IrisVertexFormats.GLYPH, new GlyphExtVertexSerializer());
 		VertexSerializerRegistry.instance().registerSerializer(DefaultVertexFormat.ENTITY, IrisVertexFormats.ENTITY, new ModelToEntityVertexSerializer());
 
 		// Only load the shader pack when we can access OpenGL

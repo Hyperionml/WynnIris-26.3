@@ -14,10 +14,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.builders.UVPair;
 import net.minecraft.client.model.object.skull.SkullModelBase;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.renderer.PlayerSkinRenderCache;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -330,7 +330,7 @@ public final class WynncraftMountArmorOverlay {
 		state.yRot = 180.0F;
 		state.animationPos = 0.0F;
 		submitNodeCollector.submitModel(modelBase, state, poseStack, renderType, packedLight,
-			OverlayTexture.NO_OVERLAY, color, null);
+			OverlayTexture.NO_OVERLAY, color);
 		poseStack.popPose();
 	}
 
@@ -363,7 +363,8 @@ public final class WynncraftMountArmorOverlay {
 
 		poseStack.pushPose();
 		poseStack.translate(0.5F, HEAD_COSMETIC_UP_OFFSET, 0.5F);
-		poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
+		// 26.3: PoseStack.mulPose(Quaternionf) was replaced by rotateDegrees(Axis, float).
+		poseStack.rotateDegrees(Axis.YP, 180.0F);
 		poseStack.scale(0.625F, 0.625F, 0.625F);
 		boolean previousSubmittingHeadCosmetic = submittingHeadCosmetic;
 		submittingHeadCosmetic = true;
@@ -413,7 +414,7 @@ public final class WynncraftMountArmorOverlay {
 		Matrix4f matrix = pose.pose();
 		Vector3fc normal = quad.direction().getUnitVec3f();
 		Vector3f transformed = new Vector3f();
-		int light = LightTexture.lightCoordsWithEmission(packedLight, quad.lightEmission());
+		int light = LightCoordsUtil.lightCoordsWithEmission(packedLight, quad.materialInfo().lightEmission());
 		float expand = armorLayer.expandFor(limbIndex);
 		LimbBounds limbBounds = slimArmBounds == null || limbIndex < 0 || limbIndex >= slimArmBounds.length ? null : slimArmBounds[limbIndex];
 

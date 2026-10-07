@@ -78,11 +78,11 @@ public class AmbienceProfileSettingsScreen extends Screen implements ShaderPackO
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
+	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
-		super.render(guiGraphics, mouseX, mouseY, delta);
+		super.extractRenderState(guiGraphics, mouseX, mouseY, delta);
 
 		drawCenteredTruncated(guiGraphics, this.title, 8, 0xFFFFFFFF);
 		if (notificationDialog != null && !notificationDialog.getString().isBlank() && notificationDialogTimer > 0) {
@@ -96,9 +96,9 @@ public class AmbienceProfileSettingsScreen extends Screen implements ShaderPackO
 			int x = (int) (0.5 * this.width) - 157;
 			int y = this.height - (panelHeight + 4);
 			GuiUtil.drawPanel(guiGraphics, x, y, COMMENT_PANEL_WIDTH, panelHeight);
-			guiGraphics.drawString(font, this.hoveredElementCommentTitle.orElse(Component.empty()), x + 4, y + 4, 0xFFFFFFFF);
+			guiGraphics.text(font, this.hoveredElementCommentTitle.orElse(Component.empty()), x + 4, y + 4, 0xFFFFFFFF);
 			for (int i = 0; i < this.hoveredElementCommentBody.size(); i++) {
-				guiGraphics.drawString(font, this.hoveredElementCommentBody.get(i), x + 4, (y + 16) + (i * 10), 0xFFFFFFFF);
+				guiGraphics.text(font, this.hoveredElementCommentBody.get(i), x + 4, (y + 16) + (i * 10), 0xFFFFFFFF);
 			}
 		}
 
@@ -396,7 +396,7 @@ public class AmbienceProfileSettingsScreen extends Screen implements ShaderPackO
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());
 		}
-		guiGraphics.drawCenteredString(this.font, rendered, (int) (this.width * 0.5), y, color);
+		guiGraphics.centeredText(this.font, rendered, (int) (this.width * 0.5), y, color);
 	}
 
 	private static String sanitizeFileName(String value) {

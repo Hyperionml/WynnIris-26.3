@@ -87,7 +87,10 @@ public class ImmediateState {
 	}
 
 	public static boolean isWynncraftVfxCandidatePipeline(RenderPipeline pipeline) {
-		return pipeline == RenderPipelines.ITEM_ENTITY_TRANSLUCENT_CULL;
+		// 26.3: RenderPipelines.ITEM_ENTITY_TRANSLUCENT_CULL no longer exists. The item-entity
+		// translucent-cull pipeline was folded into RenderPipelines.ITEM_TRANSLUCENT, which is now
+		// the item translucent pipeline used for the Wynncraft VFX candidate draws.
+		return pipeline == RenderPipelines.ITEM_TRANSLUCENT;
 	}
 
 	// Queue of deferred mesh draws (signal-containing batches held until beginTranslucents).
@@ -96,15 +99,16 @@ public class ImmediateState {
 
 	// Flush all deferred draws (called at beginTranslucents).
 	public static void flushDeferredDraws() {
+		// 26.3: The immediate-mode BufferSource path (and RenderType.draw(MeshData)) was removed, so a
+		// deferred mesh can no longer be replayed later. Nothing enqueues deferred draws on 26.3
+		// (MixinBufferSource no longer has the endBatch(RenderType, BufferBuilder) hook), so this just
+		// discards whatever is queued while keeping the flag bookkeeping that consumers rely on.
 		boolean previous = drawingDeferredWynncraftVfx;
 		drawingDeferredWynncraftVfx = true;
 		try {
-			for (DeferredDraw draw : deferredDraws) {
-				draw.renderType.draw(draw.meshData);
-			}
+			clearDeferredDraws();
 		} finally {
 			drawingDeferredWynncraftVfx = previous;
-			deferredDraws.clear();
 		}
 	}
 

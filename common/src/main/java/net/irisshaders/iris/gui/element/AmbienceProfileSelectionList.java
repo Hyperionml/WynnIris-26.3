@@ -68,7 +68,7 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 	}
 
 	@Override
-	protected void renderListBackground(GuiGraphicsExtractor guiGraphics) {
+	protected void extractListBackground(GuiGraphicsExtractor guiGraphics) {
 		float transition = screen.listTransition.getAsFloat();
 		if (transition < 0.02f) {
 			return;
@@ -79,7 +79,7 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 	}
 
 	@Override
-	protected void renderListSeparators(GuiGraphicsExtractor guiGraphics) {
+	protected void extractListSeparators(GuiGraphicsExtractor guiGraphics) {
 		float transition = screen.listTransition.getAsFloat();
 		if (transition < 0.02f) {
 			return;
@@ -118,7 +118,7 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();
@@ -128,7 +128,7 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 			if (font.width(label) > entryWidth - 8) {
 				renderedLabel = Component.literal(font.plainSubstrByWidth(label.getString(), entryWidth - 20) + "...").setStyle(label.getStyle());
 			}
-			guiGraphics.drawCenteredString(font, renderedLabel, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFC2C2C2);
+			guiGraphics.centeredText(font, renderedLabel, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFC2C2C2);
 		}
 	}
 
@@ -150,7 +150,7 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();
@@ -183,9 +183,9 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 			}
 			Component count = Component.translatable("options.iris.wynncraftAmbienceProfileOptionCount", optionCount);
 
-			guiGraphics.drawString(font, title, x + 4, y + 4, resolved.isPresent() ? 0xFFFFFFFF : 0xFFA2A2A2);
-			guiGraphics.drawString(font, subtitle, x + 4, y + 16, 0xFFAAAAAA);
-			guiGraphics.drawString(font, count, x + entryWidth - font.width(count) - 6, y + 16, 0xFFCCCCCC);
+			guiGraphics.text(font, title, x + 4, y + 4, resolved.isPresent() ? 0xFFFFFFFF : 0xFFA2A2A2);
+			guiGraphics.text(font, subtitle, x + 4, y + 16, 0xFFAAAAAA);
+			guiGraphics.text(font, count, x + entryWidth - font.width(count) - 6, y + 16, 0xFFCCCCCC);
 		}
 
 		public boolean isSelected() {

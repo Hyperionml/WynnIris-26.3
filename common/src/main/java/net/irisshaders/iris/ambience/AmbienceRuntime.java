@@ -244,7 +244,7 @@ public final class AmbienceRuntime {
 	}
 
 	private static boolean maybeStartAutoWarmScreen(Minecraft minecraft) {
-		if (!IrisVideoSettings.wynncraftAmbienceAutoWarmCache || !IrisVideoSettings.wynncraftAmbienceEnabled || minecraft.screen != null) {
+		if (!IrisVideoSettings.wynncraftAmbienceAutoWarmCache || !IrisVideoSettings.wynncraftAmbienceEnabled || minecraft.gui.screen() != null) {
 			return false;
 		}
 		WarmupStartResult result = startWarmSelectedPackProfiles("auto", true);

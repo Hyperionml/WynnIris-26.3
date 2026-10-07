@@ -77,7 +77,7 @@ public final class AmbienceRenderTargetPool {
 		return new AcquiredRenderTarget(physical.sharedView(), allocation.retain(entry));
 	}
 
-	public AcquiredDepthCopies acquireMainDepthCopies(Allocation allocation, int width, int height, TextureFormat format) {
+	public AcquiredDepthCopies acquireMainDepthCopies(Allocation allocation, int width, int height, GpuFormat format) {
 		requireOpen();
 		requireAllocation(allocation);
 		DepthCopiesKey key = new DepthCopiesKey(width, height, format);
@@ -112,8 +112,8 @@ public final class AmbienceRenderTargetPool {
 
 		misses++;
 		DepthCopies physical = new DepthCopies(
-			RenderSystem.getDevice().createTexture("Ambience Shadow Map", GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING, TextureFormat.DEPTH32, resolution, resolution, 1, mainMipped ? shadowMipLevels(resolution) : 1),
-			RenderSystem.getDevice().createTexture("Ambience Shadow Map / Opaque", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING, TextureFormat.DEPTH32, resolution, resolution, 1, noTranslucentsMipped ? shadowMipLevels(resolution) : 1)
+			RenderSystem.getDevice().createTexture("Ambience Shadow Map", GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING, GpuFormat.D32_FLOAT, resolution, resolution, 1, mainMipped ? shadowMipLevels(resolution) : 1),
+			RenderSystem.getDevice().createTexture("Ambience Shadow Map / Opaque", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING, GpuFormat.D32_FLOAT, resolution, resolution, 1, noTranslucentsMipped ? shadowMipLevels(resolution) : 1)
 		);
 		long bytes = 2L * resolution * resolution * 4L;
 		entry = new Entry<>(ResourceType.SHADOW_DEPTH, physical, bytes, physical::destroy, () -> shadowDepthCopies.remove(key));
@@ -559,7 +559,7 @@ public final class AmbienceRenderTargetPool {
 	private record ColorTargetKey(int index, InternalTextureFormat internalFormat, PixelFormat pixelFormat) {
 	}
 
-	private record DepthCopiesKey(int width, int height, TextureFormat format) {
+	private record DepthCopiesKey(int width, int height, GpuFormat format) {
 	}
 
 	private record ShadowDepthKey(int resolution, boolean mainMipped, boolean noTranslucentsMipped) {

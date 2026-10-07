@@ -17,7 +17,7 @@ public class MixinSodiumGameOptions {
 		Identifier newIdentifier = identifier;
 
 		if (identifier.getNamespace().equals("iris")) {
-			newIdentifier = IrisConfig.WYNNIRIS_CONFIG_ICON_MONO;
+			newIdentifier = IrisConfig.MONO;
 		}
 
 		original.call(instance, renderPipeline, newIdentifier, i, j, f, g, k, l, m, n, o, p, q);
@@ -28,7 +28,7 @@ public class MixinSodiumGameOptions {
 		Identifier newIdentifier = identifier;
 
 		if (identifier.getNamespace().equals("iris")) {
-			newIdentifier = IrisConfig.WYNNIRIS_CONFIG_ICON;
+			newIdentifier = IrisConfig.COLOR;
 		}
 
 		original.call(instance, renderPipeline, newIdentifier, i, j, f, g, k, l, m, n, o, p);

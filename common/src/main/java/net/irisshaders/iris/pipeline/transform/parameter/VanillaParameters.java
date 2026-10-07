@@ -9,6 +9,8 @@ import net.irisshaders.iris.pipeline.transform.Patch;
 import net.irisshaders.iris.shaderpack.loading.ProgramId;
 import net.irisshaders.iris.shaderpack.texture.TextureStage;
 
+import java.util.Set;
+
 public class VanillaParameters extends GeometryInfoParameters {
 	public final ProgramId programId;
 	public final AlphaTest alpha;
@@ -20,11 +22,11 @@ public class VanillaParameters extends GeometryInfoParameters {
 
 	public VanillaParameters(
 		Patch patch,
-		Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap,
+		Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap, Set<String> textureOverrides,
 		ProgramId programId,
 		AlphaTest alpha, boolean isLines, boolean isClouds, boolean hasChunkOffset,
 		ShaderAttributeInputs inputs, boolean hasGeometry, boolean hasTesselation) {
-		super(patch, textureMap, hasGeometry, hasTesselation);
+		super(patch, textureMap, textureOverrides, hasGeometry, hasTesselation);
 		this.programId = programId;
 		this.alpha = alpha;
 		this.isLines = isLines;

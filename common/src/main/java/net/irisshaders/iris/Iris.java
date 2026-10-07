@@ -2,9 +2,8 @@ package net.irisshaders.iris;
 
 import com.google.common.base.Throwables;
 import com.mojang.renderpearl.backend.opengl.GlDebug;
-import com.mojang.renderpearl.backend.opengl.GlDevice;
 import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import net.caffeinemc.mods.sodium.api.vertex.serializer.VertexSerializerRegistry;
 import net.irisshaders.iris.ambience.AmbienceRenderTargetPool;
@@ -13,6 +12,7 @@ import net.irisshaders.iris.ambience.AmbienceSwitchTiming;
 import net.irisshaders.iris.compat.dh.DHCompat;
 import net.irisshaders.iris.config.IrisConfig;
 import net.irisshaders.iris.gl.GLDebug;
+import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gl.buffer.ShaderStorageBufferHolder;
 import net.irisshaders.iris.gl.blending.BlendModeStorage;
 import net.irisshaders.iris.gl.shader.ProgramBinaryCache;
@@ -49,6 +49,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.util.Util;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -163,10 +164,11 @@ public class Iris {
 
 		PBRTextureManager.INSTANCE.init();
 
-		VertexSerializerRegistry.instance().registerSerializer(DefaultVertexFormat.NEW_ENTITY, IrisVertexFormats.TERRAIN, new EntityToTerrainVertexSerializer());
+		// 26.3: DefaultVertexFormat.NEW_ENTITY was renamed to DefaultVertexFormat.ENTITY.
+		VertexSerializerRegistry.instance().registerSerializer(DefaultVertexFormat.ENTITY, IrisVertexFormats.TERRAIN, new EntityToTerrainVertexSerializer());
 		VertexSerializerRegistry.instance().registerSerializer(IrisVertexFormats.ENTITY, IrisVertexFormats.TERRAIN, new IrisEntityToTerrainVertexSerializer());
 		VertexSerializerRegistry.instance().registerSerializer(DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP, IrisVertexFormats.GLYPH, new GlyphExtVertexSerializer());
-		VertexSerializerRegistry.instance().registerSerializer(DefaultVertexFormat.NEW_ENTITY, IrisVertexFormats.ENTITY, new ModelToEntityVertexSerializer());
+		VertexSerializerRegistry.instance().registerSerializer(DefaultVertexFormat.ENTITY, IrisVertexFormats.ENTITY, new ModelToEntityVertexSerializer());
 
 		// Only load the shader pack when we can access OpenGL
 		if (!IrisPlatformHelpers.getInstance().isModLoaded("distanthorizons")) {
@@ -206,14 +208,14 @@ public class Iris {
 				reload();
 
 				if (minecraft.player != null) {
-					minecraft.player.displayClientMessage(Component.translatable("iris.shaders.reloaded"), false);
+					minecraft.player.sendSystemMessage(Component.translatable("iris.shaders.reloaded"));
 				}
 
 			} catch (Exception e) {
 				logger.error("Error while reloading Shaders for Iris!", e);
 
 				if (minecraft.player != null) {
-					minecraft.player.displayClientMessage(Component.translatable("iris.shaders.reloaded.failure", Throwables.getRootCause(e).getMessage()).withStyle(ChatFormatting.RED), false);
+					minecraft.player.sendSystemMessage(Component.translatable("iris.shaders.reloaded.failure", Throwables.getRootCause(e).getMessage()).withStyle(ChatFormatting.RED));
 				}
 			}
 		} else if (toggleShadersKeybind.consumeClick()) {
@@ -223,7 +225,7 @@ public class Iris {
 				logger.error("Error while toggling shaders!", e);
 
 				if (minecraft.player != null) {
-					minecraft.player.displayClientMessage(Component.translatable("iris.shaders.toggled.failure", Throwables.getRootCause(e).getMessage()).withStyle(ChatFormatting.RED), false);
+					minecraft.player.sendSystemMessage(Component.translatable("iris.shaders.toggled.failure", Throwables.getRootCause(e).getMessage()).withStyle(ChatFormatting.RED));
 				}
 				setShadersDisabled();
 				fallback = true;
@@ -232,7 +234,7 @@ public class Iris {
 			minecraft.gui.setScreen(new ShaderPackScreen(null));
 		} else if (wireframeKeybind.consumeClick()) {
 			if (irisConfig.areDebugOptionsEnabled() && minecraft.player != null && !Minecraft.getInstance().isLocalServer()) {
-				minecraft.player.displayClientMessage(Component.literal("No cheating; wireframe only in singleplayer!"), false);
+				minecraft.player.sendSystemMessage(Component.literal("No cheating; wireframe only in singleplayer!"));
 			}
 		}
 	}
@@ -241,13 +243,38 @@ public class Iris {
 		return irisConfig.areDebugOptionsEnabled() && wireframeKeybind.isDown();
 	}
 
+	/**
+	 * 26.3: The reload keybind is also routed through KeyboardHandler.handleDebugKeys (see
+	 * MixinKeyboardHandler) so that it works even while the GUI/debug options are disabled. The other
+	 * keybinds are still handled on the client tick in {@link #handleKeybinds(Minecraft)}.
+	 */
+	public static boolean handleDebugKeys(KeyEvent event) {
+		if (reloadKeybind.matches(event)) {
+			try {
+				reload();
+
+				if (Minecraft.getInstance().player != null) {
+					Minecraft.getInstance().player.sendSystemMessage(Component.translatable("iris.shaders.reloaded"));
+				}
+			} catch (Exception e) {
+				logger.error("Error while reloading Shaders for Iris!", e);
+
+				if (Minecraft.getInstance().player != null) {
+					Minecraft.getInstance().player.sendSystemMessage(Component.translatable("iris.shaders.reloaded.failure", Throwables.getRootCause(e).getMessage()).withStyle(ChatFormatting.RED));
+				}
+			}
+			return true;
+		}
+		return false;
+	}
+
 	public static void toggleShaders(Minecraft minecraft, boolean enabled) throws IOException {
 		irisConfig.setShadersEnabled(enabled);
 		irisConfig.save();
 
 		reload();
 		if (minecraft.player != null) {
-			minecraft.player.displayClientMessage(enabled ? Component.translatable("iris.shaders.toggled", currentPackName) : Component.translatable("iris.shaders.disabled"), false);
+			minecraft.player.sendSystemMessage(enabled ? Component.translatable("iris.shaders.toggled", currentPackName) : Component.translatable("iris.shaders.disabled"));
 		}
 	}
 
@@ -745,11 +772,11 @@ public class Iris {
 
 	private static void handleException(Exception e) {
 		if (irisConfig.areDebugOptionsEnabled()) {
-			Minecraft.getInstance().gui.setScreen(new DebugLoadFailedGridScreen(Minecraft.getInstance().screen, Component.literal(e instanceof ShaderCompileException ? "Failed to compile shaders" : "Exception"), e));
+			Minecraft.getInstance().gui.setScreen(new DebugLoadFailedGridScreen(Minecraft.getInstance().gui.screen(), Component.literal(e instanceof ShaderCompileException ? "Failed to compile shaders" : "Exception"), e));
 		} else {
 			if (Minecraft.getInstance().player != null) {
-				Minecraft.getInstance().player.displayClientMessage(Component.translatable(e instanceof ShaderCompileException ? "iris.load.failure.shader" : "iris.load.failure.generic").append(Component.literal("Copy Info").withStyle(arg -> arg.withUnderlined(true).withColor(
-					ChatFormatting.BLUE).withClickEvent(new ClickEvent.CopyToClipboard(e.getMessage())).withHoverEvent(new HoverEvent.ShowText(Component.translatable("chat.copy.click"))))), false);
+				Minecraft.getInstance().player.sendSystemMessage(Component.translatable(e instanceof ShaderCompileException ? "iris.load.failure.shader" : "iris.load.failure.generic").append(Component.literal("Copy Info").withStyle(arg -> arg.withUnderlined(true).withColor(
+					ChatFormatting.BLUE).withClickEvent(new ClickEvent.CopyToClipboard(e.getMessage())).withHoverEvent(new HoverEvent.ShowText(Component.translatable("chat.copy.click"))))));
 			} else {
 				storedError = Optional.of(e);
 			}
@@ -842,20 +869,20 @@ public class Iris {
 			success = GLDebug.setupDebugMessageCallback();
 		} else {
 			GLDebug.reloadDebugState();
-			GlDebug.enableDebugCallback(Minecraft.getInstance().options.glDebugVerbosity, false, new HashSet<>(((GlDevice) RenderSystem.getDevice()).getEnabledExtensions()));
+			GlDebug.enableDebugCallback(Minecraft.getInstance().options.glDebugVerbosity, false, new HashSet<>((IrisRenderSystem.getGlDevice()).getDeviceInfo().underlyingExtensions()));
 			success = 1;
 		}
 
 		logger.info("Debug functionality is " + (enable ? "enabled, logging will be more verbose!" : "disabled."));
 		if (Minecraft.getInstance().player != null) {
 			if (IrisPlatformHelpers.getInstance().useELS()) {
-				Minecraft.getInstance().player.displayClientMessage(Component.translatable("iris.shaders.debug.restartNoDebug"), false);
+				Minecraft.getInstance().player.sendSystemMessage(Component.translatable("iris.shaders.debug.restartNoDebug"));
 			} else {
-				Minecraft.getInstance().player.displayClientMessage(Component.translatable(success != 0 ? (enable ? "iris.shaders.debug.enabled" : "iris.shaders.debug.disabled") : "iris.shaders.debug.failure"), false);
+				Minecraft.getInstance().player.sendSystemMessage(Component.translatable(success != 0 ? (enable ? "iris.shaders.debug.enabled" : "iris.shaders.debug.disabled") : "iris.shaders.debug.failure"));
 			}
 
 			if (success == 2 && !IrisPlatformHelpers.getInstance().useELS()) {
-				Minecraft.getInstance().player.displayClientMessage(Component.translatable("iris.shaders.debug.restart"), false);
+				Minecraft.getInstance().player.sendSystemMessage(Component.translatable("iris.shaders.debug.restart"));
 			}
 		}
 	}
@@ -1101,7 +1128,8 @@ public class Iris {
 		long refreshStartNanos = System.nanoTime();
 		Minecraft minecraft = Minecraft.getInstance();
 		if (minecraft.levelRenderer != null) {
-			minecraft.levelRenderer.getCloudRenderer().markForRebuild();
+			// 26.3: LevelRenderer.getCloudRenderer() was renamed to cloudRenderer().
+			minecraft.levelRenderer.cloudRenderer().markForRebuild();
 		}
 		VoxyRefreshResult voxyRefresh = refreshVoxyRendererForActivePipeline(profileKey);
 		long refreshNanos = System.nanoTime() - refreshStartNanos;
@@ -1530,7 +1558,7 @@ public class Iris {
 	private static void forceLevelRendererReload(AmbienceSwitchTiming timing, String action, String profileKey, String reloadReasons) {
 		if (Minecraft.getInstance().levelRenderer != null) {
 			long reloadStartNanos = System.nanoTime();
-			Minecraft.getInstance().levelRenderer.allChanged();
+			Minecraft.getInstance().levelExtractor.allChanged();
 			long reloadNanos = System.nanoTime() - reloadStartNanos;
 			if (timing != null) {
 				timing.addLevelRendererReloadNanos(reloadNanos);

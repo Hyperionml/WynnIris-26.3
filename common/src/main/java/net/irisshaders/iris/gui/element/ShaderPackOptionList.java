@@ -10,6 +10,7 @@ import net.irisshaders.iris.gui.NavigationController;
 import net.irisshaders.iris.gui.element.widget.AbstractElementWidget;
 import net.irisshaders.iris.gui.element.widget.OptionMenuConstructor;
 import net.irisshaders.iris.gui.screen.ShaderPackScreen;
+import net.irisshaders.iris.gui.screen.ShaderPackOptionScreen;
 import net.irisshaders.iris.shaderpack.ShaderPack;
 import net.irisshaders.iris.shaderpack.option.menu.OptionMenuContainer;
 import net.minecraft.ChatFormatting;
@@ -48,11 +49,11 @@ import java.util.Properties;
 public class ShaderPackOptionList extends IrisContainerObjectSelectionList<ShaderPackOptionList.BaseEntry> {
 	private static final Identifier MENU_LIST_BACKGROUND = Identifier.withDefaultNamespace("textures/gui/menu_background.png");
 	private final List<AbstractElementWidget<?>> elementWidgets = new ArrayList<>();
-	private final ShaderPackScreen screen;
+	private final ShaderPackOptionScreen screen;
 	private final NavigationController navigation;
 	private OptionMenuContainer container;
 
-	public ShaderPackOptionList(ShaderPackScreen screen, NavigationController navigation, ShaderPack pack, Minecraft client, int width, int height, int top, int bottom, int left, int right) {
+	public ShaderPackOptionList(ShaderPackOptionScreen screen, NavigationController navigation, ShaderPack pack, Minecraft client, int width, int height, int top, int bottom, int left, int right) {
 		super(client, width, bottom, top + 4, bottom, left, right, 24);
 		this.navigation = navigation;
 		this.screen = screen;
@@ -81,7 +82,7 @@ public class ShaderPackOptionList extends IrisContainerObjectSelectionList<Shade
 
 	@Override
 	protected void extractListBackground(GuiGraphicsExtractor pAbstractSelectionList0) {
-		float transition = screen.listTransition.getAsFloat();
+		float transition = screen.iris$getListTransition();
 		//RenderSystem.enableBlend();
 		// TODO 1.21.6
 		//RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, Math.max(screen.listTransition.getAsFloat(), 0.01f));
@@ -97,7 +98,7 @@ public class ShaderPackOptionList extends IrisContainerObjectSelectionList<Shade
 
 	@Override
 	protected void extractListSeparators(GuiGraphicsExtractor pAbstractSelectionList0) {
-		float transition = screen.listTransition.getAsFloat();
+		float transition = screen.iris$getListTransition();
 		if (transition < 0.02f) return;
 		//if (transition < 0.99f) pAbstractSelectionList0.flush();
 		// TODO 1.21.6
@@ -151,12 +152,12 @@ public class ShaderPackOptionList extends IrisContainerObjectSelectionList<Shade
 
 	public static class ElementRowEntry extends BaseEntry {
 		private final List<AbstractElementWidget<?>> widgets;
-		private final ShaderPackScreen screen;
+		private final ShaderPackOptionScreen screen;
 
 		private int cachedWidth;
 		private int cachedPosX;
 
-		public ElementRowEntry(ShaderPackScreen screen, NavigationController navigation, List<AbstractElementWidget<?>> widgets) {
+		public ElementRowEntry(ShaderPackOptionScreen screen, NavigationController navigation, List<AbstractElementWidget<?>> widgets) {
 			super(navigation);
 
 			this.screen = screen;
@@ -229,7 +230,7 @@ public class ShaderPackOptionList extends IrisContainerObjectSelectionList<Shade
 		private static final int MIN_SIDE_BUTTON_WIDTH = 42;
 		private static final int BUTTON_HEIGHT = 16;
 
-		private final ShaderPackScreen screen;
+		private final ShaderPackOptionScreen screen;
 		private final @Nullable IrisElementRow backButton;
 		private final IrisElementRow utilityButtons = new IrisElementRow();
 		private final IrisElementRow.TextButtonElement resetButton;
@@ -237,7 +238,7 @@ public class ShaderPackOptionList extends IrisContainerObjectSelectionList<Shade
 		private final IrisElementRow.IconButtonElement exportButton;
 		private final Component text;
 
-		public HeaderEntry(ShaderPackScreen screen, NavigationController navigation, Component text, boolean hasBackButton) {
+		public HeaderEntry(ShaderPackOptionScreen screen, NavigationController navigation, Component text, boolean hasBackButton) {
 			super(navigation);
 
 			if (hasBackButton) {
@@ -382,7 +383,7 @@ public class ShaderPackOptionList extends IrisContainerObjectSelectionList<Shade
 				return false;
 			}
 
-			final ShaderPackScreen originalScreen = this.screen; // Also used to prevent invalid state
+			final ShaderPackOptionScreen originalScreen = this.screen; // Also used to prevent invalid state
 
 			FileDialogUtil.fileSelectDialog(
 					FileDialogUtil.DialogType.OPEN, "Import Shader Settings from File",

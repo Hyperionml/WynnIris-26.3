@@ -12,7 +12,6 @@ import net.irisshaders.iris.gl.uniform.DynamicUniformHolder;
 import net.irisshaders.iris.gl.uniform.UniformHolder;
 import net.irisshaders.iris.layer.GbufferPrograms;
 import net.irisshaders.iris.mixin.GlStateManagerAccessor;
-import net.irisshaders.iris.mixin.statelisteners.BooleanStateAccessor;
 import net.irisshaders.iris.mixin.texture.TextureAtlasAccessor;
 import net.irisshaders.iris.mixinterface.LocalPlayerInterface;
 import net.irisshaders.iris.pbr.TextureInfoCache;
@@ -29,7 +28,6 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.core.BlockPos;
-import net.minecraft.util.ARGB;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -157,7 +155,8 @@ public final class CommonUniforms {
 		uniforms.uniform4i("blendFunc", () -> {
 			GlStateManager.BlendState blend = GlStateManagerAccessor.getBLEND();
 
-			if (((BooleanStateAccessor) blend.mode).isEnabled()) {
+			// 26.3: GlStateManager.BlendState#mode was removed; blend enable state is exposed directly.
+			if (GlStateManagerAccessor.getBLEND_ENABLE()[0]) {
 				return new Vector4i(blend.srcRgb, blend.dstRgb, blend.srcAlpha, blend.dstAlpha);
 			} else {
 				return ZERO_VECTOR_4i;
@@ -192,7 +191,8 @@ public final class CommonUniforms {
 		SmoothedVec2f eyeBrightnessSmooth = new SmoothedVec2f(directives.getEyeBrightnessHalfLife(), directives.getEyeBrightnessHalfLife(), CommonUniforms::getEyeBrightness, updateNotifier);
 
 		uniforms
-			.uniform1b(PER_FRAME, "hideGUI", () -> client.options.hideGui)
+			// 26.3: Options#hideGui was removed; the HUD's hidden state lives on Gui#hud.
+			.uniform1b(PER_FRAME, "hideGUI", client.gui.hud::isHidden)
 			.uniform1b(PER_FRAME, "isRightHanded", () -> client.options.mainHand().get() == HumanoidArm.RIGHT)
 			.uniform1i(PER_FRAME, "isEyeInWater", CommonUniforms::isEyeInWater)
 			.uniform1f(PER_FRAME, "blindness", CommonUniforms::getBlindness)
@@ -285,12 +285,14 @@ public final class CommonUniforms {
 			return ZERO_VECTOR_3d;
 		}
 
-		int skyColor = client.gameRenderer.getMainCamera().attributeProbe().getValue(EnvironmentAttributes.SKY_COLOR,
+		// 26.3: EnvironmentAttributes.SKY_COLOR now yields a Vector3fc (linear floats) instead of a
+		// packed ARGB int, so read the components directly.
+		var skyColor = client.gameRenderer.mainCamera().attributeProbe().getValue(EnvironmentAttributes.SKY_COLOR,
 			CapturedRenderingState.INSTANCE.getTickDelta());
 
-		double r = ARGB.redFloat(skyColor);
-		double g = ARGB.greenFloat(skyColor);
-		double b = ARGB.blueFloat(skyColor);
+		double r = skyColor.x();
+		double g = skyColor.y();
+		double b = skyColor.z();
 
 		// Override sky color when Wynncraft skybox is active.
 		// Shader packs use skyColor for ambient sky lighting (deferred pass) and reflections.
@@ -397,7 +399,7 @@ public final class CommonUniforms {
 				//
 				// See: https://github.com/apace100/apoli/blob/320b0ef547fbbf703de7154f60909d30366f6500/src/main/java/io/github/apace100/apoli/mixin/GameRendererMixin.java#L153
 				float nightVisionStrength =
-					GameRenderer.getNightVisionScale(livingEntity, CapturedRenderingState.INSTANCE.getTickDelta());
+					GameRenderer.nightVisionScale(livingEntity, CapturedRenderingState.INSTANCE.getTickDelta());
 
 				if (nightVisionStrength > 0) {
 					// Just protecting against potential weird mod behavior
@@ -433,7 +435,7 @@ public final class CommonUniforms {
 		// I'm not sure what the best way to deal with this is, but the current approach seems to be an acceptable one -
 		// after all, disabling the overlay results in the intended effect of it not really looking like you're
 		// underwater on most shaderpacks. For now, I will leave this as-is, but it is something to keep in mind.
-		FogType submersionType = client.gameRenderer.getMainCamera().getFluidInCamera();
+		FogType submersionType = client.gameRenderer.mainCamera().getFluidInCamera();
 		boolean isSpectator = client.player != null && client.player.isSpectator();
 		if (submersionType == FogType.WATER) {
 			return 1;

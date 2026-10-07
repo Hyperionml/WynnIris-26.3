@@ -77,10 +77,10 @@ public class AmbienceDependencySelectionScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
+	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
-		super.render(guiGraphics, mouseX, mouseY, delta);
+		super.extractRenderState(guiGraphics, mouseX, mouseY, delta);
 		drawCenteredTruncated(guiGraphics, this.title, 8, 0xFFFFFFFF);
 		drawCenteredTruncated(guiGraphics, SUBTITLE, 21, 0xFFFFFFFF);
 	}
@@ -124,7 +124,7 @@ public class AmbienceDependencySelectionScreen extends Screen {
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());
 		}
-		guiGraphics.drawCenteredString(this.font, rendered, (int) (this.width * 0.5), y, color);
+		guiGraphics.centeredText(this.font, rendered, (int) (this.width * 0.5), y, color);
 	}
 
 	private class CandidateList extends IrisObjectSelectionList<CandidateEntry> {
@@ -138,7 +138,7 @@ public class AmbienceDependencySelectionScreen extends Screen {
 		}
 
 		@Override
-		protected void renderListBackground(GuiGraphicsExtractor guiGraphics) {
+		protected void extractListBackground(GuiGraphicsExtractor guiGraphics) {
 			float transition = listTransition.getAsFloat();
 			if (transition < 0.02f) {
 				return;
@@ -149,7 +149,7 @@ public class AmbienceDependencySelectionScreen extends Screen {
 		}
 
 		@Override
-		protected void renderListSeparators(GuiGraphicsExtractor guiGraphics) {
+		protected void extractListSeparators(GuiGraphicsExtractor guiGraphics) {
 			float transition = listTransition.getAsFloat();
 			if (transition < 0.02f) {
 				return;
@@ -165,7 +165,7 @@ public class AmbienceDependencySelectionScreen extends Screen {
 		}
 
 		@Override
-		protected void renderSelection(GuiGraphicsExtractor guiGraphics, CandidateEntry entry, int color) {
+		protected void extractSelection(GuiGraphicsExtractor guiGraphics, CandidateEntry entry, int color) {
 			// CandidateEntry draws the selected-row button frame itself.
 		}
 	}
@@ -184,7 +184,7 @@ public class AmbienceDependencySelectionScreen extends Screen {
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int width = getContentWidth();
@@ -202,7 +202,7 @@ public class AmbienceDependencySelectionScreen extends Screen {
 			if (font.width(title) > width - 8) {
 				title = Component.literal(font.plainSubstrByWidth(title.getString(), width - 20) + "...").setStyle(title.getStyle());
 			}
-			guiGraphics.drawCenteredString(font, title, (x + width / 2) - 2, y + (height - 11) / 2, 0xFFFFFFFF);
+			guiGraphics.centeredText(font, title, (x + width / 2) - 2, y + (height - 11) / 2, 0xFFFFFFFF);
 		}
 
 		@Override

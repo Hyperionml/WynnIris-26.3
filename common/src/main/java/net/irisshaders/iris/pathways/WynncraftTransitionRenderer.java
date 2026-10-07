@@ -3,9 +3,9 @@ package net.irisshaders.iris.pathways;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.backend.opengl.GlStateManager;
-import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.renderpearl.api.commands.RenderPass;
+import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.renderpearl.api.vertex.VertexFormat;
 import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gl.program.Program;
 import net.irisshaders.iris.gl.program.ProgramBuilder;
@@ -16,7 +16,7 @@ import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL30C;
 
-import java.util.OptionalInt;
+import java.util.Optional;
 
 import static net.irisshaders.iris.pipeline.CompositeRenderer.COMPOSITE_PIPELINE;
 
@@ -168,23 +168,23 @@ public class WynncraftTransitionRenderer {
 		this.transColorG = ((rgbColor >> 8) & 0xFF) / 255.0f;
 		this.transColorB = (rgbColor & 0xFF) / 255.0f;
 
-		GpuBuffer indices = RenderSystem.getSequentialBuffer(VertexFormat.Mode.QUADS).getBuffer(6);
-		VertexFormat.IndexType indexType = RenderSystem.getSequentialBuffer(VertexFormat.Mode.QUADS).type();
+		GpuBuffer indices = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS).getBuffer(6);
+		var indexType = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS).type();
 
 		try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
 			() -> "Wynncraft Transition",
-			Minecraft.getInstance().getMainRenderTarget().getColorTextureView(),
-			OptionalInt.empty())) {
+			Minecraft.getInstance().gameRenderer.mainRenderTarget().getColorTextureView(),
+			Optional.empty())) {
 
-			pass.setPipeline(COMPOSITE_PIPELINE);
+			pass.setPipeline(RenderSystem.getCompiledPipeline(COMPOSITE_PIPELINE));
 			pass.iris$setCustomPass(EMPTY_PASS);
 
 			program.use();
 			framebuffer.bind();
 
 			pass.setIndexBuffer(indices, indexType);
-			pass.setVertexBuffer(0, FullScreenQuadRenderer.INSTANCE.getQuad());
-			pass.drawIndexed(0, 0, 6, 1);
+			pass.setVertexBuffer(0, FullScreenQuadRenderer.INSTANCE.getQuad().slice());
+			pass.drawIndexed(6, 1, 0, 0, 0);
 		}
 		Program.unbind();
 

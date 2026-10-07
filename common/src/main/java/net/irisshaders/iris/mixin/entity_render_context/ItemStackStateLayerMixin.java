@@ -31,7 +31,7 @@ public class ItemStackStateLayerMixin {
 	private ItemStackRenderState parentState;
 
 	@Shadow
-	private java.util.List<net.minecraft.client.renderer.block.model.BakedQuad> quads;
+	private net.minecraft.client.resources.model.geometry.ItemQuads quads;
 
 	@Inject(method = "<init>", at = @At("TAIL"))
 	private void iris$catchParent(ItemStackRenderState itemStackRenderState, CallbackInfo ci) {
@@ -65,8 +65,8 @@ public class ItemStackStateLayerMixin {
 		int skyboxPixelA = 0, skyboxPixelR = 0, skyboxPixelG = 0, skyboxPixelB = 0;
 
 		try {
-			for (var quad : quads) {
-				var sprite = quad.sprite();
+			for (var quad : quads.all()) {
+				var sprite = quad.materialInfo().sprite();
 				if (sprite == null) continue;
 				var contents = sprite.contents();
 				if (contents == null) continue;
@@ -109,7 +109,7 @@ public class ItemStackStateLayerMixin {
 				try {
 					org.joml.Matrix4f mat = poseStack.last().pose();
 					dx = mat.m30(); dy = mat.m31(); dz = mat.m32();
-					var cam = net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera();
+					var cam = net.minecraft.client.Minecraft.getInstance().gameRenderer.mainCamera();
 					var camPos = cam.position();
 					wx = camPos.x() + dx; wy = camPos.y() + dy; wz = camPos.z() + dz;
 				} catch (Exception ignored) {}
@@ -149,7 +149,7 @@ public class ItemStackStateLayerMixin {
 			submitNodeCollector,
 			packedLight,
 			packedOverlay,
-			quads,
+			quads == null ? null : quads.all(),
 			itemContext.getDisplayContext()
 		);
 	}

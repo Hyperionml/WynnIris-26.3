@@ -47,7 +47,7 @@ public class PipelineManager {
 						currentDimension, WorldRenderingSettings.INSTANCE.getReloadReasonSummary());
 				}
 				if (Minecraft.getInstance().levelRenderer != null) {
-					Minecraft.getInstance().levelRenderer.allChanged();
+					Minecraft.getInstance().levelExtractor.allChanged();
 				}
 
 				WorldRenderingSettings.INSTANCE.clearReloadRequired();

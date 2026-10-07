@@ -104,16 +104,16 @@ public class AmbiencePresetCreateScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
+	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
-		super.render(guiGraphics, mouseX, mouseY, delta);
+		super.extractRenderState(guiGraphics, mouseX, mouseY, delta);
 
 		drawCenteredTruncated(guiGraphics, this.title, 8, 0xFFFFFFFF);
 		drawCenteredTruncated(guiGraphics, status == null || status.getString().isBlank() ? SUBTITLE : status, 21, 0xFFFFFFFF);
 		if (!isChangingShader() && this.nameBox != null) {
-			guiGraphics.drawString(this.font, Component.translatable("options.iris.wynncraftAmbienceProfileName"), this.nameBox.getX(), 42, 0xFFCCCCCC);
+			guiGraphics.text(this.font, Component.translatable("options.iris.wynncraftAmbienceProfileName"), this.nameBox.getX(), 42, 0xFFCCCCCC);
 		}
 	}
 
@@ -230,7 +230,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());
 		}
-		guiGraphics.drawCenteredString(this.font, rendered, (int) (this.width * 0.5), y, color);
+		guiGraphics.centeredText(this.font, rendered, (int) (this.width * 0.5), y, color);
 	}
 
 	private class ShaderPackList extends IrisObjectSelectionList<ShaderPackEntry> {
@@ -255,7 +255,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 		}
 
 		@Override
-		protected void renderListBackground(GuiGraphicsExtractor guiGraphics) {
+		protected void extractListBackground(GuiGraphicsExtractor guiGraphics) {
 			float transition = listTransition.getAsFloat();
 			if (transition < 0.02f) {
 				return;
@@ -266,7 +266,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 		}
 
 		@Override
-		protected void renderListSeparators(GuiGraphicsExtractor guiGraphics) {
+		protected void extractListSeparators(GuiGraphicsExtractor guiGraphics) {
 			float transition = listTransition.getAsFloat();
 			if (transition < 0.02f) {
 				return;
@@ -303,7 +303,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();
@@ -322,7 +322,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 				renderedLabel = Component.literal(font.plainSubstrByWidth(renderedLabel.getString(), entryWidth - 20) + "...").setStyle(label.getStyle());
 			}
 			int color = selected ? 0xFFFFF263 : 0xFFFFFFFF;
-			guiGraphics.drawCenteredString(font, renderedLabel, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, color);
+			guiGraphics.centeredText(font, renderedLabel, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, color);
 		}
 
 		@Override

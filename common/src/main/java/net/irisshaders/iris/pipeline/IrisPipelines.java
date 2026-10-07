@@ -60,7 +60,6 @@ public class IrisPipelines {
 		assignToMain(RenderPipelines.ENTITY_TRANSLUCENT_EMISSIVE, p -> ShaderKey.ENTITIES_EYES_TRANS);
 		assignToMain(RenderPipelines.ARMOR_DECAL_CUTOUT_NO_CULL, p -> WorldRenderingSettings.INSTANCE.shouldSeparateEntityDraws() ? getTranslucent(p) : getCutout(p));
 		assignToMain(RenderPipelines.WOLF_ARMOR_CRACKS, p -> getCutout(p));
-		assignToMain(RenderPipelines.ARMOR_TRANSLUCENT, p -> getTranslucent(p));
 		assignToMain(RenderPipelines.BREEZE_WIND, p -> getTranslucent(p));
 		assignToMain(RenderPipelines.ENTITY_SOLID, p -> getSolid(p));
 		assignToMain(RenderPipelines.ENTITY_SOLID_Z_OFFSET_FORWARD, p -> getSolid(p));

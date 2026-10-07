@@ -98,10 +98,11 @@ public class MixinFogRenderer {
 		try {
 			if (sunTintActive && camera.getFluidInCamera() == FogType.NONE) {
 				float tickDelta = CapturedRenderingState.INSTANCE.getTickDelta();
-				int rawBiomeARGB = camera.attributeProbe().getValue(EnvironmentAttributes.FOG_COLOR, tickDelta);
-				float pureR = ARGB.redFloat(rawBiomeARGB);
-				float pureG = ARGB.greenFloat(rawBiomeARGB);
-				float pureB = ARGB.blueFloat(rawBiomeARGB);
+				// 26.3: EnvironmentAttributes.FOG_COLOR now yields an RGB vector rather than a packed ARGB int.
+				org.joml.Vector3fc rawBiomeFog = camera.attributeProbe().getValue(EnvironmentAttributes.FOG_COLOR, tickDelta);
+				float pureR = rawBiomeFog.x();
+				float pureG = rawBiomeFog.y();
+				float pureB = rawBiomeFog.z();
 
 				float vanLuma = rawR * 0.2126f + rawG * 0.7152f + rawB * 0.0722f;
 				float pureLuma = pureR * 0.2126f + pureG * 0.7152f + pureB * 0.0722f;

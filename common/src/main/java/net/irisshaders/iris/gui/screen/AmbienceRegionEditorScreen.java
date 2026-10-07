@@ -162,13 +162,13 @@ public class AmbienceRegionEditorScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
+	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
 		renderSidebar(guiGraphics, mouseX, mouseY);
 		renderMap(guiGraphics, mouseX, mouseY);
-		super.render(guiGraphics, mouseX, mouseY, delta);
+		super.extractRenderState(guiGraphics, mouseX, mouseY, delta);
 
 		drawCenteredTruncated(guiGraphics, this.title, 8, 0xFFFFFFFF);
 		Component subtitle = status != null && !status.getString().isBlank() ? status : EDIT_TITLE;
@@ -357,7 +357,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		int width = sidebarWidth();
 		int height = listBottom() - TOP;
 		GuiUtil.drawPanel(guiGraphics, x, y, width, height);
-		guiGraphics.drawCenteredString(font, Component.translatable("options.iris.wynncraftAmbienceRegionProfiles"), x + width / 2, y + 8, 0xFFFFFFFF);
+		guiGraphics.centeredText(font, Component.translatable("options.iris.wynncraftAmbienceRegionProfiles"), x + width / 2, y + 8, 0xFFFFFFFF);
 
 		int listTop = y + 24;
 		int listHeight = height - 28;
@@ -391,10 +391,10 @@ public class AmbienceRegionEditorScreen extends Screen {
 			shaderName = font.plainSubstrByWidth(shaderName, width - 86) + "...";
 		}
 
-		guiGraphics.drawString(font, Component.literal(profileName), x + 4, y + 4, selected ? 0xFFFFF263 : 0xFFFFFFFF);
-		guiGraphics.drawString(font, Component.literal(shaderName).withStyle(ChatFormatting.GRAY), x + 4, y + 16, resolved.isPresent() ? 0xFFAAAAAA : 0xFFFFAAAA);
+		guiGraphics.text(font, Component.literal(profileName), x + 4, y + 4, selected ? 0xFFFFF263 : 0xFFFFFFFF);
+		guiGraphics.text(font, Component.literal(shaderName).withStyle(ChatFormatting.GRAY), x + 4, y + 16, resolved.isPresent() ? 0xFFAAAAAA : 0xFFFFAAAA);
 		Component count = Component.translatable("options.iris.wynncraftAmbienceRegionCount", regionCount);
-		guiGraphics.drawString(font, count, x + width - font.width(count) - 4, y + 16, 0xFFCCCCCC);
+		guiGraphics.text(font, count, x + width - font.width(count) - 4, y + 16, 0xFFCCCCCC);
 	}
 
 	private void renderMap(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
@@ -406,11 +406,11 @@ public class AmbienceRegionEditorScreen extends Screen {
 		renderRegions(guiGraphics, viewport);
 		renderActiveDrawing(guiGraphics, viewport, mouseX, mouseY);
 		guiGraphics.disableScissor();
-		guiGraphics.drawString(font, mapStatus(), viewport.x + 6, viewport.y + viewport.height - 14, 0xFFFFFFFF);
+		guiGraphics.text(font, mapStatus(), viewport.x + 6, viewport.y + viewport.height - 14, 0xFFFFFFFF);
 		if (mapAreaContains(mouseX, mouseY)) {
 			AmbienceRegion.Point point = viewport.toWorld(mouseX, mouseY);
 			Component coords = Component.literal(String.format(Locale.ROOT, "x %.0f, z %.0f", point.x, point.z)).withStyle(ChatFormatting.GRAY);
-			guiGraphics.drawString(font, coords, viewport.x + viewport.width - font.width(coords) - 6, viewport.y + viewport.height - 14, 0xFFFFFFFF);
+			guiGraphics.text(font, coords, viewport.x + viewport.width - font.width(coords) - 6, viewport.y + viewport.height - 14, 0xFFFFFFFF);
 		}
 	}
 
@@ -483,7 +483,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 				drawRegion(guiGraphics, viewport, region, 0xFF63FF8A, 2);
 			}
 			Component label = Component.literal(Integer.toString(region.priority));
-			guiGraphics.drawString(font, label, sx - font.width(label) / 2, sy - 4, isSelected ? 0xFF63FF8A : 0xFFFFFFFF);
+			guiGraphics.text(font, label, sx - font.width(label) / 2, sy - 4, isSelected ? 0xFF63FF8A : 0xFFFFFFFF);
 		}
 	}
 
@@ -1299,7 +1299,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());
 		}
-		guiGraphics.drawCenteredString(this.font, rendered, (int) (this.width * 0.5), y, color);
+		guiGraphics.centeredText(this.font, rendered, (int) (this.width * 0.5), y, color);
 	}
 
 	private enum Tool {

@@ -78,8 +78,8 @@ public class ShadowRenderTargets {
 		}
 
 		if (ambiencePool == null) {
-			this.mainDepth = RenderSystem.getDevice().createTexture("Shadow Map", GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING, TextureFormat.DEPTH32, resolution, resolution, 1, this.mipped[0] ? log2(resolution) : 1);
-			this.noTranslucents = RenderSystem.getDevice().createTexture("Shadow Map / Opaque", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING, TextureFormat.DEPTH32, resolution, resolution, 1, this.mipped[1] ? log2(resolution) : 1);
+			this.mainDepth = RenderSystem.getDevice().createTexture("Shadow Map", GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING, GpuFormat.D32_FLOAT, resolution, resolution, 1, this.mipped[0] ? log2(resolution) : 1);
+			this.noTranslucents = RenderSystem.getDevice().createTexture("Shadow Map / Opaque", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_TEXTURE_BINDING, GpuFormat.D32_FLOAT, resolution, resolution, 1, this.mipped[1] ? log2(resolution) : 1);
 			this.depthCopiesRef = null;
 		} else {
 			AmbienceRenderTargetPool.AcquiredDepthCopies acquired = ambiencePool.acquireShadowDepthCopies(ambienceAllocation, resolution, this.mipped[0], this.mipped[1]);

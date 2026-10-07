@@ -136,11 +136,11 @@ public class AmbiencePackScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
+	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
-		super.render(guiGraphics, mouseX, mouseY, delta);
+		super.extractRenderState(guiGraphics, mouseX, mouseY, delta);
 
 		drawCenteredTruncated(guiGraphics, this.title, 8, 0xFFFFFFFF);
 		if (status != null && !status.getString().isBlank()) {
@@ -167,7 +167,7 @@ public class AmbiencePackScreen extends Screen {
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());
 		}
-		guiGraphics.drawCenteredString(this.font, rendered, (int) (this.width * 0.5), y, color);
+		guiGraphics.centeredText(this.font, rendered, (int) (this.width * 0.5), y, color);
 	}
 
 	public List<AmbiencePackManager.LoadedAmbiencePack> getPacks() {
@@ -694,7 +694,7 @@ public class AmbiencePackScreen extends Screen {
 		}
 
 		@Override
-		protected void renderContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
+		protected void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 			GuiUtil.drawButton(guiGraphics, this.getX(), this.getY(), this.getWidth(), this.getHeight(), this.isHoveredOrFocused(), !this.isActive());
 			GuiUtil.Icon renderedIcon = this.isHoveredOrFocused() && this.isActive() ? hoveredIcon : icon;
 			int iconX = this.getX() + (this.getWidth() - renderedIcon.getWidth()) / 2;

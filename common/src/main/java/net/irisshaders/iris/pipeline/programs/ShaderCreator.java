@@ -85,6 +85,7 @@ public class ShaderCreator {
         } else {
             transformed = TransformPatcher.patchVanilla(
                     name,
+                    programId,
                     source.getVertexSource().orElseThrow(RuntimeException::new),
                     source.getGeometrySource().orElse(null),
                     source.getTessControlSource().orElse(null),
@@ -246,7 +247,8 @@ public class ShaderCreator {
 												GlFramebuffer writingToAfterTranslucent, AlphaTest alpha,
 												VertexFormat vertexFormat, BlendModeOverride blendModeOverride,
 												IrisRenderingPipeline parent, FogMode fogMode, boolean entityLighting,
-												boolean isGlint, boolean isText, boolean intensityTex, boolean isFullbright) throws IOException {
+												boolean isGlint, boolean isText, boolean intensityTex, boolean isFullbright,
+												boolean premultiplyAlpha) throws IOException {
 		ShaderAttributeInputs inputs = new ShaderAttributeInputs(vertexFormat, isFullbright, false, isGlint, isText, false);
 
         if (vertexFormat == null) {
@@ -255,8 +257,9 @@ public class ShaderCreator {
         }
 		// TODO: Is this check sound in newer versions?
 		boolean isLeash = vertexFormat == DefaultVertexFormat.POSITION_COLOR_LIGHTMAP;
-		String vertex = ShaderSynthesizer.vsh(true, inputs, fogMode, entityLighting, isLeash);
-		String fragment = ShaderSynthesizer.fsh(inputs, fogMode, alpha, intensityTex, isLeash);
+		boolean isWynncraftVfxTranslucent = shaderKey == ShaderKey.WYNNCRAFT_VFX_TRANSLUCENT;
+		String vertex = ShaderSynthesizer.vsh(true, inputs, fogMode, entityLighting, isLeash, isWynncraftVfxTranslucent);
+		String fragment = ShaderSynthesizer.fsh(inputs, fogMode, alpha, intensityTex, isLeash, premultiplyAlpha);
 
 		ShaderPrinter.printProgram(name)
 			.addSource(PatchShaderType.VERTEX, vertex)
@@ -293,8 +296,8 @@ public class ShaderCreator {
         }
 		// TODO: Is this check sound in newer versions?
 		boolean isLeash = vertexFormat == DefaultVertexFormat.POSITION_COLOR_LIGHTMAP;
-		String vertex = ShaderSynthesizer.vsh(true, inputs, fogMode, entityLighting, isLeash);
-		String fragment = ShaderSynthesizer.fsh(inputs, fogMode, alpha, intensityTex, isLeash);
+		String vertex = ShaderSynthesizer.vsh(true, inputs, fogMode, entityLighting, isLeash, false);
+		String fragment = ShaderSynthesizer.fsh(inputs, fogMode, alpha, intensityTex, isLeash, false);
 
 		ShaderPrinter.printProgram(name)
 			.addSource(PatchShaderType.VERTEX, vertex)
@@ -339,6 +342,7 @@ public class ShaderCreator {
         } else {
             transformed = TransformPatcher.patchVanilla(
                     name,
+                    programId,
                     source.getVertexSource().orElseThrow(RuntimeException::new),
                     source.getGeometrySource().orElse(null),
                     source.getTessControlSource().orElse(null),

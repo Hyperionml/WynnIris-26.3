@@ -48,11 +48,11 @@ public class AmbienceWarmupScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
+	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
-		super.render(guiGraphics, mouseX, mouseY, delta);
+		super.extractRenderState(guiGraphics, mouseX, mouseY, delta);
 
 		AmbienceRuntime.WarmupProgress progress = AmbienceRuntime.getWarmupProgress();
 		drawCenteredTruncated(guiGraphics, this.title, 18, 0xFFFFFFFF);
@@ -179,6 +179,6 @@ public class AmbienceWarmupScreen extends Screen {
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());
 		}
-		guiGraphics.drawCenteredString(this.font, rendered, (int) (this.width * 0.5), y, color);
+		guiGraphics.centeredText(this.font, rendered, (int) (this.width * 0.5), y, color);
 	}
 }

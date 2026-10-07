@@ -22,7 +22,7 @@ public class IrisObjectSelectionList<E extends AbstractSelectionList.Entry<E>> e
 	}
 
 	@Override
-	protected void renderSelection(GuiGraphicsExtractor guiGraphics, E entry, int color) {
+	protected void extractSelection(GuiGraphicsExtractor guiGraphics, E entry, int color) {
 		int x = entry.getContentX() - 2;
 		int y = entry.getContentY() - 2;
 		int right = x + entry.getContentWidth();

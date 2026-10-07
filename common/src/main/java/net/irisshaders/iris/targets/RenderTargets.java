@@ -12,7 +12,6 @@ import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gl.framebuffer.GlFramebuffer;
 import net.irisshaders.iris.gl.texture.DepthBufferFormat;
 import net.irisshaders.iris.gl.texture.DepthCopyStrategy;
-import net.irisshaders.iris.platform.IrisPlatformHelpers;
 import net.irisshaders.iris.shaderpack.properties.PackDirectives;
 import net.irisshaders.iris.shaderpack.properties.PackRenderTargetDirectives;
 import org.joml.Vector2i;
@@ -84,7 +83,7 @@ public class RenderTargets {
 
 		this.depthSourceFb = createFramebufferWritingToMain(new int[]{0});
 
-		TextureFormat mojangDepthFormat = IrisPlatformHelpers.getInstance().mojangDepthFormat(depthFormat);
+		GpuFormat mojangDepthFormat = depthFormat.toMojang();
 
 		if (ambiencePool == null) {
 			this.noTranslucents = RenderSystem.getDevice().createTexture("Depth / Opaque", GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING, mojangDepthFormat, width, height, 1, 1);
@@ -289,7 +288,7 @@ public class RenderTargets {
 		}
 
 		if (depthFormatChanged || sizeChanged) {
-			TextureFormat mojangDepthFormat = IrisPlatformHelpers.getInstance().mojangDepthFormat(newDepthFormat);
+			GpuFormat mojangDepthFormat = newDepthFormat.toMojang();
 			AmbienceRenderTargetPool.ResourceRef previousDepthCopiesRef = null;
 
 			if (ambiencePool == null) {

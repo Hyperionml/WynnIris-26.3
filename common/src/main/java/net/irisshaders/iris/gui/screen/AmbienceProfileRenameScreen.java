@@ -65,13 +65,13 @@ public class AmbienceProfileRenameScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
+	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
-		super.render(guiGraphics, mouseX, mouseY, delta);
+		super.extractRenderState(guiGraphics, mouseX, mouseY, delta);
 		drawCenteredTruncated(guiGraphics, this.title, 8, 0xFFFFFFFF);
 		drawCenteredTruncated(guiGraphics, status == null || status.getString().isBlank() ? Component.literal(profileId).withStyle(ChatFormatting.GRAY) : status, 21, 0xFFFFFFFF);
-		guiGraphics.drawString(this.font, Component.translatable("options.iris.wynncraftAmbienceProfileName"), this.nameBox.getX(), 58, 0xFFCCCCCC);
+		guiGraphics.text(this.font, Component.translatable("options.iris.wynncraftAmbienceProfileName"), this.nameBox.getX(), 58, 0xFFCCCCCC);
 	}
 
 	@Override
@@ -106,6 +106,6 @@ public class AmbienceProfileRenameScreen extends Screen {
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());
 		}
-		guiGraphics.drawCenteredString(this.font, rendered, (int) (this.width * 0.5), y, color);
+		guiGraphics.centeredText(this.font, rendered, (int) (this.width * 0.5), y, color);
 	}
 }

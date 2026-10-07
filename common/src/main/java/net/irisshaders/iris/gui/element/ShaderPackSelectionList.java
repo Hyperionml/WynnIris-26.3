@@ -58,7 +58,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 				com.mojang.blaze3d.Blaze3D.openUri(java.net.URI.create("https://modrinth.com/shaders"));
 			}
 			this.minecraft.gui.setScreen(this.screen);
-		}, "https://modrinth.com/shaders", true)), this);
+		}, java.net.URI.create("https://modrinth.com/shaders"), true)), this);
 		try {
 			watcher1 = FileSystems.getDefault().newWatchService();
 			key1 = Iris.getShaderpacksDirectory().register(watcher1,
@@ -88,7 +88,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 	}
 
 	@Override
-	public void renderWidget(GuiGraphicsExtractor pAbstractSelectionList0, int pInt1, int pInt2, float pFloat3) {
+	public void extractWidgetRenderState(GuiGraphicsExtractor pAbstractSelectionList0, int pInt1, int pInt2, float pFloat3) {
 		if (keyValid) {
 			for (WatchEvent<?> event : key.pollEvents()) {
 				if (event.kind() == StandardWatchEventKinds.OVERFLOW) continue;
@@ -100,7 +100,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 			keyValid = key.reset();
 		}
 
-		super.renderWidget(pAbstractSelectionList0, pInt1, pInt2, pFloat3);
+		super.extractWidgetRenderState(pAbstractSelectionList0, pInt1, pInt2, pFloat3);
 	}
 
 	public void close() throws IOException {
@@ -114,7 +114,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 	}
 
 	@Override
-	protected void renderListBackground(GuiGraphicsExtractor pAbstractSelectionList0) {
+	protected void extractListBackground(GuiGraphicsExtractor pAbstractSelectionList0) {
 		float transition = screen.listTransition.getAsFloat();
 		if (transition < 0.02f) return;
 		//if (transition < 0.99f) pAbstractSelectionList0.flush();
@@ -132,7 +132,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 	}
 
 	@Override
-	protected void renderListSeparators(GuiGraphicsExtractor pAbstractSelectionList0) {
+	protected void extractListSeparators(GuiGraphicsExtractor pAbstractSelectionList0) {
 		float transition = screen.listTransition.getAsFloat();
 		if (transition < 0.02f) return;
 		//if (transition < 0.99f) pAbstractSelectionList0.flush();
@@ -270,14 +270,14 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			// Draw dividing line
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();
 			int entryHeight = getContentHeight();
 
-			guiGraphics.drawCenteredString(Minecraft.getInstance().font, label, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFC2C2C2);
+			guiGraphics.centeredText(Minecraft.getInstance().font, label, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFC2C2C2);
 		}
 	}
 
@@ -302,7 +302,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			// Draw dividing line
 			int x = getContentX();
 			int y = getContentY();
@@ -311,7 +311,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 
 			GuiUtil.bindIrisWidgetsTexture();
 			GuiUtil.drawButton(guiGraphics, x - 2, y - 2, entryWidth, entryHeight + 2, isHovered, !allowEnableShadersButton);
-			guiGraphics.drawCenteredString(Minecraft.getInstance().font, getEnableDisableLabel(), (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFFFFFFF);
+			guiGraphics.centeredText(Minecraft.getInstance().font, getEnableDisableLabel(), (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFFFFFFF);
 		}
 
 		private Component getEnableDisableLabel() {
@@ -366,7 +366,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 				int textX = this.centerX - (int) (this.font.width(this.text) * 0.5);
 				int textY = y + (int) ((height - 8) * 0.5);
 
-				guiGraphics.drawString(this.font, this.text, textX, textY, 0xFFFFFFFF);
+				guiGraphics.text(this.font, this.text, textX, textY, 0xFFFFFFFF);
 			}
 		}
 	}
@@ -382,7 +382,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			// Draw dividing line
 			int x = getContentX();
 			int y = getContentY();
@@ -391,7 +391,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 
 			GuiUtil.bindIrisWidgetsTexture();
 			GuiUtil.drawButton(guiGraphics, x - 2, y - 2, entryWidth, entryHeight + 2, isHovered, !allowPressButton);
-			guiGraphics.drawCenteredString(Minecraft.getInstance().font, label, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFFFFFFF);
+			guiGraphics.centeredText(Minecraft.getInstance().font, label, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFFFFFFF);
 		}
 
 		@Override
@@ -444,7 +444,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();
@@ -473,7 +473,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 				renderedTitle = Component.literal(font.plainSubstrByWidth(renderedTitle.getString(), entryWidth - 20) + "...").setStyle(title.getStyle());
 			}
 
-			guiGraphics.drawCenteredString(font, renderedTitle, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, titleColor);
+			guiGraphics.centeredText(font, renderedTitle, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, titleColor);
 		}
 
 		@Override
@@ -543,7 +543,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			// Draw dividing line
 			int x = getContentX();
 			int y = getContentY();
@@ -580,7 +580,7 @@ public class ShaderPackSelectionList extends IrisObjectSelectionList<ShaderPackS
 				color = 0xFFA2A2A2;
 			}
 
-			guiGraphics.drawCenteredString(font, text, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, color);
+			guiGraphics.centeredText(font, text, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, color);
 		}
 
 		@Override

@@ -12,7 +12,7 @@ public class ImageClearPass {
 	}
 
 	public void execute() {
-		image.clear();
+		image.clearTexture();
 	}
 
 	public void destroy() {

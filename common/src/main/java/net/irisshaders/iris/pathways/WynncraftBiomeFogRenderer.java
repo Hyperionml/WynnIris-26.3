@@ -4,9 +4,9 @@ import com.google.common.collect.ImmutableSet;
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.backend.opengl.GlStateManager;
 import com.mojang.renderpearl.backend.opengl.GlTexture;
-import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.renderpearl.api.commands.RenderPass;
+import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.renderpearl.api.vertex.VertexFormat;
 import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gl.framebuffer.GlFramebuffer;
 import net.irisshaders.iris.gl.program.Program;
@@ -22,7 +22,7 @@ import org.joml.Vector3d;
 import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL30C;
 
-import java.util.OptionalInt;
+import java.util.Optional;
 
 import static net.irisshaders.iris.pipeline.CompositeRenderer.COMPOSITE_PIPELINE;
 
@@ -220,24 +220,24 @@ public class WynncraftBiomeFogRenderer {
 		this.fogDensity = fogDensity;
 		this.sunTintReductionStrength = sunTintReductionStrength;
 
-		GpuBuffer indices = RenderSystem.getSequentialBuffer(VertexFormat.Mode.QUADS).getBuffer(6);
-		VertexFormat.IndexType type = RenderSystem.getSequentialBuffer(VertexFormat.Mode.QUADS).type();
+		GpuBuffer indices = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS).getBuffer(6);
+		var type = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS).type();
 
 		try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
 			() -> "Wynncraft Biome Fog",
-			Minecraft.getInstance().getMainRenderTarget().getColorTextureView(),
-			OptionalInt.empty())) {
+			Minecraft.getInstance().gameRenderer.mainRenderTarget().getColorTextureView(),
+			Optional.empty())) {
 
-			pass.setPipeline(COMPOSITE_PIPELINE);
+			pass.setPipeline(RenderSystem.getCompiledPipeline(COMPOSITE_PIPELINE));
 			pass.iris$setCustomPass(EMPTY_PASS);
 
 			program.use();
 			framebuffer.bind();
 
 			pass.setIndexBuffer(indices, type);
-			pass.setVertexBuffer(0, FullScreenQuadRenderer.INSTANCE.getQuad());
+			pass.setVertexBuffer(0, FullScreenQuadRenderer.INSTANCE.getQuad().slice());
 
-			pass.drawIndexed(0, 0, 6, 1);
+			pass.drawIndexed(6, 1, 0, 0, 0);
 		}
 		Program.unbind();
 

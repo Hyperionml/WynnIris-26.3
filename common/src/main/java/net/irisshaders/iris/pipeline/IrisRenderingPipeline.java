@@ -70,7 +70,7 @@ import net.irisshaders.iris.pipeline.programs.ShaderKey;
 import net.irisshaders.iris.pipeline.programs.ShaderLoadingMap;
 import net.irisshaders.iris.pipeline.programs.ShaderMap;
 import net.irisshaders.iris.pipeline.programs.ShaderSupplier;
-import net.irisshaders.iris.pipeline.programs.SodiumPrograms;
+import net.irisshaders.iris.pipeline.transform.Patch;
 import net.irisshaders.iris.pipeline.transform.PatchShaderType;
 import net.irisshaders.iris.pipeline.transform.ShaderPrinter;
 import net.irisshaders.iris.pipeline.transform.TransformPatcher;
@@ -239,7 +239,6 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	private final int stackSize = 0;
 	private final boolean skipAllRendering;
 	private final CloudSetting dhCloudSetting;
-	private final SodiumPrograms sodiumPrograms;
 	public boolean isBeforeTranslucent;
 	private boolean initializedBlockIds;
 	private ShaderStorageBufferHolder shaderStorageBufferHolder;
@@ -339,7 +338,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		this.wynncraftFallbackVfxTranslucency = wynncraftPhotonShaderPack && !hasEntitiesTrans;
 		this.pack = programSet.getPack();
 
-		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+		RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
 		GpuTexture depthTexture  = main.getDepthTexture();
 		int internalFormat = GlConst.toGlInternalId(depthTexture.getFormat());
 		DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
@@ -525,14 +524,14 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		this.loadedShaders = new HashSet<>();
 
 
-		ShaderLoadingMap loadingMap = new ShaderLoadingMap(key -> {
+		ShaderLoadingMap loadingMap = new ShaderLoadingMap((key, patchType) -> {
 			try {
 				if (key.isShadow()) {
-					return createShadowShader(key.getName(), resolver.resolve(key.getProgram()), key);
+					return createShadowShader(key.getName(), resolver.resolve(key.getProgram()), key, patchType);
 				} else if (key == ShaderKey.WYNNCRAFT_VFX_TRANSLUCENT) {
-					return createShader(key.getName(), Optional.empty(), key);
+					return createShader(key.getName(), Optional.empty(), key, patchType);
 				} else {
-					return createShader(key.getName(), resolver.resolve(key.getProgram()), key);
+					return createShader(key.getName(), resolver.resolve(key.getProgram()), key, patchType);
 				}
 			} catch (FakeChainedJsonException e) {
 				destroyShaders();
@@ -593,9 +592,8 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			this.shadowRenderer = null;
 		}
 
-		// TODO: Create fallback Sodium shaders if the pack doesn't provide terrain shaders
-		//       Currently we use Sodium's shaders but they don't support EXP2 fog underwater.
-		this.sodiumPrograms = new SodiumPrograms(this, programSet, resolver, renderTargets, shadowTargetsSupplier, customUniforms);
+		// 26.3: SodiumPrograms was removed on 26.3 (Sodium integration changed); no fallback Sodium
+		// programs are created here anymore.
 
 		this.setup = createSetupComputes(programSet.getSetup(), programSet, TextureStage.SETUP);
 
@@ -712,7 +710,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			BlockMaterialMapping.createBlockStateIdMap(pack.getIdMap().getBlockProperties(), pack.getIdMap().getTagEntries()));
 		WorldRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(pack.getIdMap().getBlockRenderTypeMap()));
 		initializedBlockIds = true;
-		sodiumPrograms.applyWorldRenderingSettings();
+		// 26.3: sodiumPrograms.applyWorldRenderingSettings() dropped — SodiumPrograms no longer exists.
 	}
 
 	public void onAmbienceProfileActivated() {
@@ -849,7 +847,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 				ProgramBuilder builder;
 
 				try {
-					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), TextureStage.GBUFFERS_AND_SHADOW, customTextureMap);
+					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), TextureStage.GBUFFERS_AND_SHADOW, customTextureMap, getTextureOverrides(TextureStage.GBUFFERS_AND_SHADOW));
 
 					ShaderPrinter.printProgram(source.getName()).addSource(PatchShaderType.COMPUTE, transformed).print();
 
@@ -912,7 +910,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 				ProgramBuilder builder;
 
 				try {
-					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), stage, customTextureMap);
+					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), stage, customTextureMap, getTextureOverrides(stage));
 
 					ShaderPrinter.printProgram(source.getName()).addSource(PatchShaderType.COMPUTE, transformed).print();
 
@@ -965,13 +963,15 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		return programs;
 	}
 
-	private ShaderSupplier createShader(String name, Optional<ProgramSource> source, ShaderKey key) throws IOException {
+	private ShaderSupplier createShader(String name, Optional<ProgramSource> source, ShaderKey key, Patch patch) throws IOException {
 		if (source.isEmpty()) {
 			return createFallbackShader(name, key);
 		}
 
+		// 26.3: ShaderKey.IE_COMPAT no longer exists (the IE_FORMAT vertex access was removed), so the
+		// isIE flag is always false — matching upstream Iris 26.3.
 		return createShader(name, key, source.get(), key.getProgram(), key.getAlphaTest(), key.getVertexFormat(), key.getFogMode(),
-			key.isIntensity(), key.shouldIgnoreLightmap(), key.isGlint(), key.isText(), key == ShaderKey.IE_COMPAT);
+			key.isIntensity(), key.shouldIgnoreLightmap(), key.isGlint(), key.isText(), false, patch);
 	}
 
 	public boolean shouldUseWynncraftFallbackVfxTranslucency() {
@@ -983,9 +983,14 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		return customTextureMap;
 	}
 
+	@Override
+	public Set<String> getTextureOverrides(TextureStage stage) {
+		return customTextureManager.getCustomTextureIdMap(stage).keySet();
+	}
+
 	private ShaderSupplier createShader(String name, ShaderKey key, ProgramSource source, ProgramId programId, AlphaTest fallbackAlpha,
 										VertexFormat vertexFormat, FogMode fogMode,
-										boolean isIntensity, boolean isFullbright, boolean isGlint, boolean isText, boolean isIE) throws IOException {
+										boolean isIntensity, boolean isFullbright, boolean isGlint, boolean isText, boolean isIE, Patch patch) throws IOException {
 		int[] drawBuffers = source.getDirectives().getDrawBuffers();
 		GlFramebuffer beforeTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, drawBuffers);
 		GlFramebuffer afterTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, drawBuffers);
@@ -1001,7 +1006,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 
 		ShaderSupplier extendedShader = ShaderCreator.create(this, name, key, source, programId, beforeTranslucent, afterTranslucent,
-			fallbackAlpha, vertexFormat, inputs, updateNotifier, this, flipped, fogMode, isIntensity, isFullbright, false, isLines, customUniforms);
+			fallbackAlpha, vertexFormat, inputs, updateNotifier, this, flipped, fogMode, isIntensity, isFullbright, false, isLines, customUniforms, patch);
 
 		return extendedShader;
 	}
@@ -1043,8 +1048,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			renderTargets.refreshGbufferFramebuffer(binding.framebuffer(), binding.stageWritesToAlt(), binding.drawBuffers());
 		}
 
-		sodiumPrograms.refreshMainFramebuffers();
-
+		// 26.3: sodiumPrograms.refreshMainFramebuffers() dropped — SodiumPrograms no longer exists.
 		int defaultTex = packDirectives.getFallbackTex();
 		renderTargets.refreshGbufferFramebuffer(defaultFB, flippedAfterPrepare, new int[]{defaultTex});
 		renderTargets.refreshGbufferFramebuffer(defaultFBAlt, flippedAfterTranslucent, new int[]{defaultTex});
@@ -1071,13 +1075,14 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 											 int[] drawBuffers) {
 	}
 
-	private ShaderSupplier createShadowShader(String name, Optional<ProgramSource> source, ShaderKey key) throws IOException {
+	private ShaderSupplier createShadowShader(String name, Optional<ProgramSource> source, ShaderKey key, Patch patchType) throws IOException {
 		if (source.isEmpty()) {
 			return createFallbackShadowShader(name, key);
 		}
 
+		// 26.3: ShaderKey.IE_COMPAT_SHADOW no longer exists (IE_FORMAT was removed); isIE is always false.
 		return createShadowShader(name, key, source.get(), key.getProgram(), key.getAlphaTest(), key.getVertexFormat(),
-			key.isIntensity(), key.shouldIgnoreLightmap(), key.isText(), key == ShaderKey.IE_COMPAT_SHADOW);
+			key.isIntensity(), key.shouldIgnoreLightmap(), key.isText(), false, patchType);
 	}
 
 	private ShaderSupplier createFallbackShadowShader(String name, ShaderKey key) throws IOException {
@@ -1089,7 +1094,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	}
 
 	private ShaderSupplier createShadowShader(String name, ShaderKey key, ProgramSource source, ProgramId programId, AlphaTest fallbackAlpha,
-											  VertexFormat vertexFormat, boolean isIntensity, boolean isFullbright, boolean isText, boolean isIE) throws IOException {
+											  VertexFormat vertexFormat, boolean isIntensity, boolean isFullbright, boolean isText, boolean isIE, Patch patchType) throws IOException {
 		boolean isLines = programId == ProgramId.Line && resolver.has(ProgramId.Line);
 
 		ShaderAttributeInputs inputs = new ShaderAttributeInputs(vertexFormat, isFullbright, isLines, false, isText, isIE);
@@ -1097,7 +1102,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		Supplier<ImmutableSet<Integer>> flipped = () -> flippedBeforeShadow;
 
 		ShaderSupplier extendedShader = ShaderCreator.createShadow(this, name, key, source, programId, shadowTargetsSupplier,
-			fallbackAlpha, vertexFormat, inputs, updateNotifier, this, flipped, FogMode.PER_VERTEX, isIntensity, isFullbright, true, isLines, customUniforms);
+			fallbackAlpha, vertexFormat, inputs, updateNotifier, this, flipped, FogMode.PER_VERTEX, isIntensity, isFullbright, true, isLines, customUniforms, patchType);
 
 		return extendedShader;
 	}
@@ -1239,7 +1244,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			WorldRenderingSettings.INSTANCE.setBlockStateIds(
 				BlockMaterialMapping.createBlockStateIdMap(pack.getIdMap().getBlockProperties(), pack.getIdMap().getTagEntries()));
 			WorldRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(pack.getIdMap().getBlockRenderTypeMap()));
-			Minecraft.getInstance().levelRenderer.allChanged();
+			Minecraft.getInstance().levelExtractor.allChanged();
 			initializedBlockIds = true;
 		}
 
@@ -1300,7 +1305,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		// Update custom uniforms
 		this.customUniforms.update();
 
-		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+		RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
 
 		GpuTexture depthTexture = main.getDepthTexture();
 		DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(GlConst.toGlInternalId(main.getDepthTexture().getFormat()));
@@ -1385,7 +1390,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		//
 		// If we forget to do this, then weird lines appear at the top of the screen and the right of the screen
 		// on Sildur's Vibrant Shaders.
-		Minecraft.getInstance().getMainRenderTarget().iris$bindFramebuffer();
+		Minecraft.getInstance().gameRenderer.mainRenderTarget().iris$bindFramebuffer();
 		isMainBound = true;
 
 		boolean shouldRunSetupComputes = changed || runSetupComputesOnNextFrame;
@@ -1512,7 +1517,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		// wiped out: translucents don't write depth, so their pixels stayed at clear
 		// depth and got overwritten as sky.
 		if (wynncraftSkyboxRenderer != null && displayedSkyboxId > 0 && skyboxFadeOpacity > 0.001f) {
-			com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+			com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
 			int dhDepthTex = dhCompat != null ? dhCompat.getDepthTex() : 0;
 			int voxyDepthTex = voxyLodDepth != null ? voxyLodDepth.currentDepthTexId() : 0;
 			wynncraftSkyboxRenderer.renderSkyPaint(
@@ -1644,7 +1649,8 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 				// No darkening at night since the scene is already dark.
 				float daylightFactor = 0.0f;
 				if (Minecraft.getInstance().level != null) {
-					long dayTime = Minecraft.getInstance().level.getDayTime() % 24000L;
+					// 26.3: ClientLevel.getDayTime() was removed; getDefaultClockTime() is the equivalent clock time.
+					long dayTime = Minecraft.getInstance().level.getDefaultClockTime() % 24000L;
 					if (dayTime < 12000) {
 						daylightFactor = (float) Math.sin(dayTime * Math.PI / 12000.0);
 					} else {
@@ -1671,7 +1677,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			if (Math.abs(biomeFogOpacity - targetOpacity) < 0.005f) biomeFogOpacity = targetOpacity;
 
 			if (biomeFogOpacity > 0.001f) {
-				com.mojang.blaze3d.pipeline.RenderTarget mainRT = Minecraft.getInstance().getMainRenderTarget();
+				com.mojang.blaze3d.pipeline.RenderTarget mainRT = Minecraft.getInstance().gameRenderer.mainRenderTarget();
 
 				// Apply minimum fog distance: if user requested a farther fog end than
 				// the biome's default, push it out while preserving the fog's thickness.
@@ -1712,7 +1718,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		// Sky pixels were painted at beginTranslucents — this pass leaves them alone so
 		// VFX that blended over the skybox during the translucent pass are preserved.
 		if (wynncraftSkyboxRenderer != null && displayedSkyboxId > 0 && skyboxFadeOpacity > 0.001f) {
-			com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+			com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
 			int dhDepthTex = dhCompat != null ? dhCompat.getDepthTex() : 0;
 			int voxyDepthTex = voxyLodDepth != null ? voxyLodDepth.currentDepthTexId() : 0;
 			wynncraftSkyboxRenderer.renderSceneEffects(
@@ -1735,7 +1741,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			int transColor = cpuTrans.color();
 
 			if (transType > 0 && transProgress > 0.001f) {
-				com.mojang.blaze3d.pipeline.RenderTarget mainRT = Minecraft.getInstance().getMainRenderTarget();
+				com.mojang.blaze3d.pipeline.RenderTarget mainRT = Minecraft.getInstance().gameRenderer.mainRenderTarget();
 				wynncraftTransitionRenderer.render(
 					(GlTexture) mainRT.getColorTexture(),
 					computeWynncraftGameTime(),
@@ -1763,7 +1769,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	@Override
 	public void finalizeGameRendering() {
-		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+		RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
 		colorSpaceConverter.process((GlTexture) main.getColorTexture());
 
 		boolean restoredPreviousFrame = false;
@@ -2044,11 +2050,6 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	@Override
 	public boolean shouldOverrideShaders() {
 		return isRenderingWorld && isMainBound;
-	}
-
-	@Override
-	public SodiumPrograms getSodiumPrograms() {
-		return sodiumPrograms;
 	}
 
 	@Override

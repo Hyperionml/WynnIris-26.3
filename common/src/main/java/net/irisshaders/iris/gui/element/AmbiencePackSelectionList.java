@@ -82,7 +82,7 @@ public class AmbiencePackSelectionList extends IrisObjectSelectionList<AmbienceP
 	}
 
 	@Override
-	protected void renderListBackground(GuiGraphicsExtractor guiGraphics) {
+	protected void extractListBackground(GuiGraphicsExtractor guiGraphics) {
 		float transition = screen.listTransition.getAsFloat();
 		if (transition < 0.02f) {
 			return;
@@ -93,7 +93,7 @@ public class AmbiencePackSelectionList extends IrisObjectSelectionList<AmbienceP
 	}
 
 	@Override
-	protected void renderListSeparators(GuiGraphicsExtractor guiGraphics) {
+	protected void extractListSeparators(GuiGraphicsExtractor guiGraphics) {
 		float transition = screen.listTransition.getAsFloat();
 		if (transition < 0.02f) {
 			return;
@@ -132,7 +132,7 @@ public class AmbiencePackSelectionList extends IrisObjectSelectionList<AmbienceP
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();
@@ -142,7 +142,7 @@ public class AmbiencePackSelectionList extends IrisObjectSelectionList<AmbienceP
 			if (font.width(label) > entryWidth - 8) {
 				renderedLabel = Component.literal(font.plainSubstrByWidth(label.getString(), entryWidth - 20) + "...").setStyle(label.getStyle());
 			}
-			guiGraphics.drawCenteredString(font, renderedLabel, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFC2C2C2);
+			guiGraphics.centeredText(font, renderedLabel, (x + entryWidth / 2) - 2, y + (entryHeight - 11) / 2, 0xFFC2C2C2);
 		}
 	}
 
@@ -159,14 +159,14 @@ public class AmbiencePackSelectionList extends IrisObjectSelectionList<AmbienceP
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();
 
 			GuiUtil.bindIrisWidgetsTexture();
 			GuiUtil.drawButton(guiGraphics, x - 2, y - 2, entryWidth, BUTTON_HEIGHT + 2, isHovered, !allowEnableAmbienceButton);
-			guiGraphics.drawCenteredString(Minecraft.getInstance().font, getEnableDisableLabel(), (x + entryWidth / 2) - 2, y + (BUTTON_HEIGHT - 11) / 2, 0xFFFFFFFF);
+			guiGraphics.centeredText(Minecraft.getInstance().font, getEnableDisableLabel(), (x + entryWidth / 2) - 2, y + (BUTTON_HEIGHT - 11) / 2, 0xFFFFFFFF);
 		}
 
 		private Component getEnableDisableLabel() {
@@ -232,7 +232,7 @@ public class AmbiencePackSelectionList extends IrisObjectSelectionList<AmbienceP
 		}
 
 		@Override
-		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();
@@ -273,8 +273,8 @@ public class AmbiencePackSelectionList extends IrisObjectSelectionList<AmbienceP
 			}
 
 			int textY = y + (BUTTON_HEIGHT - 11) / 2;
-			guiGraphics.drawString(font, title, x + 4, textY, titleColor);
-			guiGraphics.drawString(font, subtitle, x + entryWidth - subtitleWidth - 6, textY, subtitleColor);
+			guiGraphics.text(font, title, x + 4, textY, titleColor);
+			guiGraphics.text(font, subtitle, x + entryWidth - subtitleWidth - 6, textY, subtitleColor);
 		}
 
 		@Override

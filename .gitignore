@@ -44,3 +44,19 @@ run/
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Claude Code / Codex
+.claude/
+.conductor/
+.codex-reviews/
+.codex/
+
+# Local assets / resource packs
+/assets/
+Wynncraft_RP_*/
+Wynncraft_RP_*.zip
+.gradle-local/
+/.agents
+CLAUDE.md
+skills-lock.json
+AGENTS.md

@@ -14,6 +14,7 @@ public class CapturedRenderingState {
 	private Matrix4fc gbufferModelView;
 	private Matrix4fc gbufferProjection;
 	private Vector3d fogColor;
+	private Vector3d untintedFogColor;
 	private float fogDensity;
 	private float darknessLightFactor;
 	private float tickDelta;
@@ -22,6 +23,8 @@ public class CapturedRenderingState {
 
 	private int currentRenderedEntity = -1;
 	private int currentRenderedItem = -1;
+	private boolean currentRenderedItemInHand;
+	private boolean currentRenderedItemSkipsItemTint;
 	private int textureReloadCount = 0;
 
 	private float currentAlphaTest;
@@ -57,6 +60,17 @@ public class CapturedRenderingState {
 		fogColor = new Vector3d(red, green, blue);
 	}
 
+	public Vector3d getUntintedFogColor() {
+		if (Minecraft.getInstance().level == null || untintedFogColor == null) {
+			return getFogColor();
+		}
+		return untintedFogColor;
+	}
+
+	public void setUntintedFogColor(float red, float green, float blue) {
+		untintedFogColor = new Vector3d(red, green, blue);
+	}
+
 	public float getFogDensity() {
 		return fogDensity;
 	}
@@ -89,6 +103,17 @@ public class CapturedRenderingState {
 		return currentRenderedBlockEntity;
 	}
 
+	public int getCurrentRenderedBlockEntityWithRenderFlags() {
+		int blockEntity = currentRenderedBlockEntity;
+		if (currentRenderedItemSkipsItemTint) {
+			blockEntity |= 0x4000;
+		}
+		if (currentRenderedItemInHand) {
+			blockEntity |= 0x8000;
+		}
+		return blockEntity;
+	}
+
 	public void setCurrentEntity(int entity) {
 		this.currentRenderedEntity = entity;
 	}
@@ -103,6 +128,22 @@ public class CapturedRenderingState {
 
 	public void setCurrentRenderedItem(int item) {
 		this.currentRenderedItem = item;
+	}
+
+	public boolean isCurrentRenderedItemInHand() {
+		return currentRenderedItemInHand;
+	}
+
+	public void setCurrentRenderedItemInHand(boolean currentRenderedItemInHand) {
+		this.currentRenderedItemInHand = currentRenderedItemInHand;
+	}
+
+	public boolean currentRenderedItemSkipsItemTint() {
+		return currentRenderedItemSkipsItemTint;
+	}
+
+	public void setCurrentRenderedItemSkipsItemTint(boolean currentRenderedItemSkipsItemTint) {
+		this.currentRenderedItemSkipsItemTint = currentRenderedItemSkipsItemTint;
 	}
 
 	public float getCurrentAlphaTest() {

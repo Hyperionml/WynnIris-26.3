@@ -177,10 +177,44 @@ public class IrisConfig {
 		try {
 			IrisVideoSettings.shadowDistance = Integer.parseInt(properties.getProperty("maxShadowRenderDistance", "32"));
 			IrisVideoSettings.colorSpace = ColorSpace.valueOf(properties.getProperty("colorSpace", "SRGB"));
+			IrisVideoSettings.glintBrightness = Integer.parseInt(properties.getProperty("glintBrightness", "110"));
+			IrisVideoSettings.tintBrightness = Integer.parseInt(properties.getProperty("tintBrightness", "75"));
+			IrisVideoSettings.wynncraftSceneDarkening = Integer.parseInt(properties.getProperty("wynncraftSceneDarkening", "100"));
+			IrisVideoSettings.wynncraftEntityBrightness = Math.max(0, Math.min(200, Integer.parseInt(properties.getProperty("wynncraftEntityBrightness", "100"))));
+			IrisVideoSettings.wynncraftEntityEmissivity = Math.max(0, Math.min(100, Integer.parseInt(properties.getProperty("wynncraftEntityEmissivity", "100"))));
+			IrisVideoSettings.wynncraftNightVisionDisablesBoost = !"false".equals(properties.getProperty("wynncraftNightVisionDisablesBoost", "true"));
+			IrisVideoSettings.wynncraftTextBrightnessFloor = "true".equals(properties.getProperty("wynncraftTextBrightnessFloor", "false"));
+			IrisVideoSettings.wynncraftTextBrightnessFloorLevel = Math.max(0, Math.min(15, Integer.parseInt(properties.getProperty("wynncraftTextBrightnessFloorLevel", "10"))));
+			IrisVideoSettings.wynncraftMistWoodsFog = !"false".equals(properties.getProperty("wynncraftMistWoodsFog", "true"));
+			IrisVideoSettings.wynncraftMistWoodsFogDensity = Math.max(0, Math.min(100, Integer.parseInt(properties.getProperty("wynncraftMistWoodsFogDensity", "100"))));
+			IrisVideoSettings.wynncraftMistWoodsFogMinDistance = Math.max(0, Math.min(300, Integer.parseInt(properties.getProperty("wynncraftMistWoodsFogMinDistance", "0"))));
+			IrisVideoSettings.wynncraftMistWoodsFogSunTintReduction = "true".equals(properties.getProperty("wynncraftMistWoodsFogSunTintReduction", "false"));
+			IrisVideoSettings.wynncraftMistWoodsFogSunTintAmount = Math.max(0, Math.min(100, Integer.parseInt(properties.getProperty("wynncraftMistWoodsFogSunTintAmount", "50"))));
+			IrisVideoSettings.wynncraftMountArmorOverlay = "true".equals(properties.getProperty("wynncraftMountArmorOverlay", "false"));
+			IrisVideoSettings.wynncraftAmbienceEnabled = "true".equals(properties.getProperty("wynncraftAmbienceEnabled", "false"));
+			IrisVideoSettings.wynncraftAmbienceAutoWarmCache = !"false".equals(properties.getProperty("wynncraftAmbienceAutoWarmCache", "true"));
+			IrisVideoSettings.wynncraftSelectedAmbiencePack = properties.getProperty("wynncraftSelectedAmbiencePack", "");
 		} catch (IllegalArgumentException e) {
 			Iris.logger.error("Shadow distance setting reset; value is invalid.");
 			IrisVideoSettings.shadowDistance = 32;
 			IrisVideoSettings.colorSpace = ColorSpace.SRGB;
+			IrisVideoSettings.glintBrightness = 110;
+			IrisVideoSettings.tintBrightness = 75;
+			IrisVideoSettings.wynncraftSceneDarkening = 100;
+			IrisVideoSettings.wynncraftEntityBrightness = 100;
+			IrisVideoSettings.wynncraftEntityEmissivity = 100;
+			IrisVideoSettings.wynncraftNightVisionDisablesBoost = true;
+			IrisVideoSettings.wynncraftTextBrightnessFloor = false;
+			IrisVideoSettings.wynncraftTextBrightnessFloorLevel = 10;
+			IrisVideoSettings.wynncraftMistWoodsFog = true;
+			IrisVideoSettings.wynncraftMistWoodsFogDensity = 100;
+			IrisVideoSettings.wynncraftMistWoodsFogMinDistance = 0;
+			IrisVideoSettings.wynncraftMistWoodsFogSunTintReduction = false;
+			IrisVideoSettings.wynncraftMistWoodsFogSunTintAmount = 50;
+			IrisVideoSettings.wynncraftMountArmorOverlay = false;
+			IrisVideoSettings.wynncraftAmbienceEnabled = false;
+			IrisVideoSettings.wynncraftAmbienceAutoWarmCache = true;
+			IrisVideoSettings.wynncraftSelectedAmbiencePack = "";
 			save();
 		}
 
@@ -205,6 +239,24 @@ public class IrisConfig {
 		properties.setProperty("disableUpdateMessage", disableUpdateMessage ? "true" : "false");
 		properties.setProperty("maxShadowRenderDistance", String.valueOf(IrisVideoSettings.shadowDistance));
 		properties.setProperty("colorSpace", IrisVideoSettings.colorSpace.name());
+		properties.setProperty("glintBrightness", String.valueOf(IrisVideoSettings.glintBrightness));
+		properties.setProperty("tintBrightness", String.valueOf(IrisVideoSettings.tintBrightness));
+
+		properties.setProperty("wynncraftSceneDarkening", String.valueOf(IrisVideoSettings.wynncraftSceneDarkening));
+		properties.setProperty("wynncraftEntityBrightness", String.valueOf(IrisVideoSettings.wynncraftEntityBrightness));
+		properties.setProperty("wynncraftEntityEmissivity", String.valueOf(IrisVideoSettings.wynncraftEntityEmissivity));
+		properties.setProperty("wynncraftNightVisionDisablesBoost", String.valueOf(IrisVideoSettings.wynncraftNightVisionDisablesBoost));
+		properties.setProperty("wynncraftTextBrightnessFloor", String.valueOf(IrisVideoSettings.wynncraftTextBrightnessFloor));
+		properties.setProperty("wynncraftTextBrightnessFloorLevel", String.valueOf(IrisVideoSettings.wynncraftTextBrightnessFloorLevel));
+		properties.setProperty("wynncraftMistWoodsFog", String.valueOf(IrisVideoSettings.wynncraftMistWoodsFog));
+		properties.setProperty("wynncraftMistWoodsFogDensity", String.valueOf(IrisVideoSettings.wynncraftMistWoodsFogDensity));
+		properties.setProperty("wynncraftMistWoodsFogMinDistance", String.valueOf(IrisVideoSettings.wynncraftMistWoodsFogMinDistance));
+		properties.setProperty("wynncraftMistWoodsFogSunTintReduction", String.valueOf(IrisVideoSettings.wynncraftMistWoodsFogSunTintReduction));
+		properties.setProperty("wynncraftMistWoodsFogSunTintAmount", String.valueOf(IrisVideoSettings.wynncraftMistWoodsFogSunTintAmount));
+		properties.setProperty("wynncraftMountArmorOverlay", String.valueOf(IrisVideoSettings.wynncraftMountArmorOverlay));
+		properties.setProperty("wynncraftAmbienceEnabled", String.valueOf(IrisVideoSettings.wynncraftAmbienceEnabled));
+		properties.setProperty("wynncraftAmbienceAutoWarmCache", String.valueOf(IrisVideoSettings.wynncraftAmbienceAutoWarmCache));
+		properties.setProperty("wynncraftSelectedAmbiencePack", IrisVideoSettings.wynncraftSelectedAmbiencePack == null ? "" : IrisVideoSettings.wynncraftSelectedAmbiencePack);
 		// NB: This uses ISO-8859-1 with unicode escapes as the encoding
 		try (OutputStream os = Files.newOutputStream(propertiesPath)) {
 			properties.store(os, COMMENT);

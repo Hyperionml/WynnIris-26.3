@@ -22,6 +22,16 @@ public class VanillaTransformer {
 			EntityPatcher.patchEntityId(t, tree, root, parameters);
 		} else if (parameters.inputs.isText()) {
 			EntityPatcher.patchEntityId(t, tree, root, parameters);
+			// Text background quads (no UV0): clamp output alpha to vertex alpha for
+			// packs that drop it (e.g. Super Duper Vanilla nameplate backgrounds).
+			if (!parameters.inputs.hasTex() && parameters.inputs.hasColor()) {
+				EntityPatcher.patchTextBackgroundAlpha(t, tree, root, parameters);
+			}
+		}
+		// Display entities may render through non-overlay paths with Color.
+		// Add translucency-only detection for these cases.
+		if (!parameters.inputs.hasOverlay() && parameters.inputs.hasColor() && !parameters.inputs.isText() && parameters.inputs.hasNormal()) {
+			EntityPatcher.patchTranslucencyOnly(t, tree, root, parameters);
 		}
 
 		CommonTransformer.transform(t, tree, root, parameters, false);
@@ -83,8 +93,10 @@ public class VanillaTransformer {
 				"in float iris_LineWidth;");
 
 			if (parameters.inputs.hasTex() && !parameters.isClouds()) {
+				boolean isEntityOverlayUV = parameters.inputs.hasOverlay() && !parameters.inputs.isText()
+					&& root.identifierIndex.has("irisw_uv0");
 				root.replaceReferenceExpressions(t, "gl_MultiTexCoord0",
-					"vec4(iris_UV0, 0.0, 1.0)");
+					isEntityOverlayUV ? "vec4(irisw_uv0, 0.0, 1.0)" : "vec4(iris_UV0, 0.0, 1.0)");
 				tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_DECLARATIONS,
 					"in vec2 iris_UV0;");
 			} else {
@@ -119,14 +131,45 @@ public class VanillaTransformer {
 
 		if (parameters.inputs.hasColor() && parameters.type == PatchShaderType.VERTEX) {
 			// TODO: Handle the fragment / geometry shader here
-			if (parameters.alpha.reference() == Float.MAX_VALUE) {
-				root.replaceReferenceExpressions(t, "gl_Color",
-					"vec4((iris_Color * iris_transforms.ColorModulator).rgb, iris_transforms.ColorModulator.a)");
-			} else if (parameters.isClouds()) {
+			// For entity/item shaders, neutralize Wynncraft's glint (G=255, B=0), translucency
+			// (G=254, B=0), and mount armor overlay signals so the shader pack sees white
+			// instead of the encoded color.
+			boolean isWynncraftEntity = parameters.inputs.hasOverlay() && !parameters.inputs.isText();
+			// Neutralize glint (G=255) to white with full alpha. Translucency (G=254) neutralizes
+			// rgb to white but preserves the level-encoded alpha (1.0 - level/100.0) so pack
+			// fragment code that multiplies by gl_Color.a propagates the translucency weight,
+			// mirroring Wynncraft RP's applyTranslucent(). End-of-main fragment-side fallback
+			// in EntityPatcher.appendTranslucencyAlpha stays unconditional for packs that
+			// overwrite alpha mid-shader (double-attenuation is the accepted trade-off).
+			// Alpha factor decode matches EntityPatcher's iris_wynncraft_translucency integer domain.
+			// Floor at 0.10 (instead of 0.0) so level=100 VFX remains barely visible.
+			String translucencyAlphaFactor = "max(0.10, 1.0 - float(int(round(iris_Color.r * 255.0))) / 100.0)";
+			String translucencyBranch = "vec4(1.0, 1.0, 1.0, " + translucencyAlphaFactor + ")";
+			String armorOverlayNeutral = "(int(round(iris_Color.a * 255.0)) == 252 || int(round(iris_Color.a * 255.0)) == 250)"
+				+ " || (iris_Color.r < 0.01 && iris_Color.b < 0.01"
+				+ " && (int(round(iris_Color.g * 255.0)) == 252 || int(round(iris_Color.g * 255.0)) == 250))"
+				+ " || ((int(round(iris_Color.r * 255.0)) == 252 || int(round(iris_Color.r * 255.0)) == 250)"
+				+ " && int(round(iris_Color.g * 255.0)) == 255 && int(round(iris_Color.b * 255.0)) == 255)";
+			String entityNeutral = "(iris_Color.g > 0.998 && iris_Color.b < 0.01 && iris_Color.r > 0.002 && iris_Color.r < 0.99 ? vec4(1.0)"
+				+ " : iris_Color.g > 0.994 && iris_Color.g < 0.998 && iris_Color.b < 0.01 && iris_Color.r > 0.002 && iris_Color.r < 0.998 ? " + translucencyBranch
+				+ " : (" + armorOverlayNeutral + ") ? vec4(1.0)"
+				+ " : iris_Color)";
+			String translucencyNeutral = "(iris_Color.g > 0.994 && iris_Color.g < 0.998 && iris_Color.b < 0.01 && iris_Color.r > 0.002 && iris_Color.r < 0.998 ? " + translucencyBranch
+				+ " : (" + armorOverlayNeutral + ") ? vec4(1.0)"
+				+ " : iris_Color)";
+			// Entity: neutralize glint+translucency. Non-text non-entity with Normal: neutralize translucency only.
+			// Text/particles/weather (no Normal): no neutralization.
+			boolean isNonOverlayEntity = !parameters.inputs.isText() && parameters.inputs.hasNormal();
+			String baseColor = isWynncraftEntity ? entityNeutral
+				: (isNonOverlayEntity ? translucencyNeutral : "iris_Color");
+			if (parameters.isClouds()) {
 				root.replaceReferenceExpressions(t, "gl_Color", "iris_cloudCol");
+			} else if (parameters.alpha.reference() == Float.MAX_VALUE) {
+				root.replaceReferenceExpressions(t, "gl_Color",
+					"vec4((" + baseColor + " * iris_transforms.ColorModulator).rgb, iris_transforms.ColorModulator.a)");
 			} else {
 				root.replaceReferenceExpressions(t, "gl_Color",
-					"(iris_Color * iris_transforms.ColorModulator)");
+					"(" + baseColor + " * iris_transforms.ColorModulator)");
 			}
 
 			if (parameters.type.glShaderType == ShaderType.VERTEX) {
@@ -337,7 +380,10 @@ public class VanillaTransformer {
 				root.replaceReferenceExpressions(t, "gl_Vertex", "vec4(iris_cloudPos, 1.0)");
 				root.replaceReferenceExpressions(t, "gl_Normal", "iris_cloudNormal");
 			} else {
-				root.replaceReferenceExpressions(t, "gl_Vertex", "vec4(iris_Position, 1.0)");
+				boolean isEntityOverlay = parameters.inputs.hasOverlay() && !parameters.inputs.isText()
+					&& root.identifierIndex.has("irisw_pos");
+				root.replaceReferenceExpressions(t, "gl_Vertex",
+					isEntityOverlay ? "vec4(irisw_pos, 1.0)" : "vec4(iris_Position, 1.0)");
 			}
 		}
 

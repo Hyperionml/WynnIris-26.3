@@ -1,10 +1,12 @@
 package net.irisshaders.iris.uniforms;
 
-import com.mojang.renderpearl.backend.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.compat.dh.DHCompat;
 import net.irisshaders.iris.gl.state.FogMode;
+import net.irisshaders.iris.gl.uniform.FloatSupplier;
+import net.irisshaders.iris.gui.option.IrisVideoSettings;
 import net.irisshaders.iris.gl.state.StateUpdateNotifiers;
 import net.irisshaders.iris.gl.uniform.DynamicUniformHolder;
 import net.irisshaders.iris.gl.uniform.UniformHolder;
@@ -72,6 +74,55 @@ public final class CommonUniforms {
 		// This is a fallback for when entityId via attributes cannot be used. (lightning)
 		uniforms.uniform1i("entityId", CapturedRenderingState.INSTANCE::getCurrentRenderedEntity, StateUpdateNotifiers.fallbackEntityNotifier);
 
+		// Wynncraft glint brightness (user-configurable, 50-200%)
+		uniforms.uniform1f("iris_glintBrightness", (FloatSupplier) () -> IrisVideoSettings.glintBrightness / 100.0f, listener -> {});
+		// Wynncraft tint brightness (user-configurable, 0-150%)
+		uniforms.uniform1f("iris_tintBrightness", (FloatSupplier) () -> IrisVideoSettings.tintBrightness / 100.0f, listener -> {});
+		// Wynncraft emissive entity strength (user-configurable, 0-100%).
+		uniforms.uniform1f("iris_wynncraftEntityEmissivity", (FloatSupplier) () -> IrisVideoSettings.wynncraftEntityEmissivity / 100.0f, listener -> {});
+		// Wynncraft entity brightness boost — compensates for dark skybox scene tinting.
+		// Active when a dark skybox is detected (3,4,5,7), regardless of time of day or rain.
+		// (Unlike fog darkening, the boost is BRIGHTNESS COMPENSATION — needed most at night.)
+		// Scales with scene darkening slider and detection fade opacity.
+		// Disabled when player has night vision (if setting enabled).
+		uniforms.uniform1f("iris_wynncraftEntityBoost", (FloatSupplier) () -> {
+			// Check if a dark skybox is active
+			int skyId = net.irisshaders.iris.pipeline.IrisRenderingPipeline.displayedSkyboxId;
+			float fadeOpacity = net.irisshaders.iris.pipeline.IrisRenderingPipeline.skyboxFadeOpacity;
+			boolean isDark = (skyId == 3 || skyId == 4 || skyId == 5 || skyId == 7);
+			if (!isDark || fadeOpacity < 0.001f) {
+				return 1.0f;
+			}
+			// Skip boost when player has night vision (if setting enabled)
+			if (IrisVideoSettings.wynncraftNightVisionDisablesBoost && getNightVision() > 0.5f) {
+				return 1.0f;
+			}
+			float entityBrightness = IrisVideoSettings.wynncraftEntityBrightness / 100.0f;
+			if (entityBrightness <= 0.0f) {
+				return 1.0f;
+			}
+			// Base 50% boost, scaled by entity brightness, fade opacity, and scene darkening.
+			// Compensates for our fog darkening making entities hard to see.
+			// (No day/night curve — Wynncraft overrides MC time per-area.)
+			float sceneDarken = IrisVideoSettings.wynncraftSceneDarkening / 100.0f;
+			return 1.0f + 0.5f * entityBrightness * fadeOpacity * sceneDarken;
+		}, listener -> {});
+
+		// Wynncraft primary skybox ID — entities matching this ID are discarded (post-process renders them).
+		// 0 = no primary detected, all skybox entities render via GLSL projection (fallback).
+		uniforms.uniform1i("iris_wynncraftPrimarySkyboxId",
+			() -> net.irisshaders.iris.pipeline.IrisRenderingPipeline.displayedSkyboxId,
+			StateUpdateNotifiers.fallbackEntityNotifier);
+
+		// Wynncraft recent skybox ID — a primary that faded out or was switched away
+		// within the grace window. Domes with this id stay DISCARDED so the departed
+		// region's still-loaded skybox entity doesn't reappear as a floating
+		// procedural patch once the primary id resets to 0.
+		uniforms.uniform1i("iris_wynncraftRecentSkyboxId",
+			() -> System.currentTimeMillis() < net.irisshaders.iris.pipeline.IrisRenderingPipeline.recentSkyboxExpiryMs
+				? net.irisshaders.iris.pipeline.IrisRenderingPipeline.recentSkyboxId : 0,
+			StateUpdateNotifiers.fallbackEntityNotifier);
+
 		// TODO: OptiFine doesn't think that atlasSize is a "dynamic" uniform,
 		//       but we do. How will custom uniforms depending on atlasSize work?
 		//
@@ -92,11 +143,11 @@ public final class CommonUniforms {
 		}, listener -> {
 		});
 
-		uniforms.uniform1i("gtextureId", () -> Iris.getPipelineManager().getPipeline().map(i -> i.getAlbedoTex()).orElse(0), StateUpdateNotifiers.bindTextureNotifier);
+		uniforms.uniform1i("gtextureId", () -> GlStateManagerAccessor.getTEXTURES()[0].binding, StateUpdateNotifiers.bindTextureNotifier);
 		uniforms.uniform1i("textureReloadCount", CapturedRenderingState.INSTANCE::getTextureReloadCount, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform2i("gtextureSize", () -> {
-			int glId = Iris.getPipelineManager().getPipeline().map(i -> i.getAlbedoTex()).orElse(0);
+			int glId = GlStateManagerAccessor.getTEXTURES()[0].binding;
 
 			TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
 			return new Vector2i(info.getWidth(), info.getHeight());
@@ -106,7 +157,7 @@ public final class CommonUniforms {
 		uniforms.uniform4i("blendFunc", () -> {
 			GlStateManager.BlendState blend = GlStateManagerAccessor.getBLEND();
 
-			if (GlStateManagerAccessor.getBLEND_ENABLE()[0]) {
+			if (((BooleanStateAccessor) blend.mode).isEnabled()) {
 				return new Vector4i(blend.srcRgb, blend.dstRgb, blend.srcAlpha, blend.dstAlpha);
 			} else {
 				return ZERO_VECTOR_4i;
@@ -133,7 +184,6 @@ public final class CommonUniforms {
 		MatrixUniforms.addMatrixUniforms(uniforms, directives);
 		IdMapUniforms.addIdMapUniforms(updateNotifier, uniforms, idMap, directives.isOldHandLight());
 		CommonUniforms.generalCommonUniforms(uniforms, updateNotifier, directives);
-		IrisInternalUniforms.addOtherUniforms(uniforms, updateNotifier, directives);
 	}
 
 	public static void generalCommonUniforms(UniformHolder uniforms, FrameUpdateNotifier updateNotifier, PackDirectives directives) {
@@ -142,7 +192,7 @@ public final class CommonUniforms {
 		SmoothedVec2f eyeBrightnessSmooth = new SmoothedVec2f(directives.getEyeBrightnessHalfLife(), directives.getEyeBrightnessHalfLife(), CommonUniforms::getEyeBrightness, updateNotifier);
 
 		uniforms
-			.uniform1b(PER_FRAME, "hideGUI", client.gui.hud::isHidden)
+			.uniform1b(PER_FRAME, "hideGUI", () -> client.options.hideGui)
 			.uniform1b(PER_FRAME, "isRightHanded", () -> client.options.mainHand().get() == HumanoidArm.RIGHT)
 			.uniform1i(PER_FRAME, "isEyeInWater", CommonUniforms::isEyeInWater)
 			.uniform1f(PER_FRAME, "blindness", CommonUniforms::getBlindness)
@@ -235,10 +285,25 @@ public final class CommonUniforms {
 			return ZERO_VECTOR_3d;
 		}
 
-		var skyColor = client.gameRenderer.mainCamera().attributeProbe().getValue(EnvironmentAttributes.SKY_COLOR,
+		int skyColor = client.gameRenderer.getMainCamera().attributeProbe().getValue(EnvironmentAttributes.SKY_COLOR,
 			CapturedRenderingState.INSTANCE.getTickDelta());
 
-		return new Vector3d(skyColor.x(), skyColor.y(), skyColor.z());
+		double r = ARGB.redFloat(skyColor);
+		double g = ARGB.greenFloat(skyColor);
+		double b = ARGB.blueFloat(skyColor);
+
+		// Override sky color when Wynncraft skybox is active.
+		// Shader packs use skyColor for ambient sky lighting (deferred pass) and reflections.
+		// Without this, block edges and glass reflect the bright vanilla sky instead of our dark skybox.
+		float[] skyFog = net.irisshaders.iris.pipeline.IrisRenderingPipeline.skyboxFogColor;
+		float blend = net.irisshaders.iris.pipeline.IrisRenderingPipeline.skyboxFogBlendFactor;
+		if (skyFog != null && blend > 0.001f) {
+			r = r * (1 - blend) + skyFog[0] * blend;
+			g = g * (1 - blend) + skyFog[1] * blend;
+			b = b * (1 - blend) + skyFog[2] * blend;
+		}
+
+		return new Vector3d(r, g, b);
 	}
 
 	static float getBlindness() {
@@ -332,7 +397,7 @@ public final class CommonUniforms {
 				//
 				// See: https://github.com/apace100/apoli/blob/320b0ef547fbbf703de7154f60909d30366f6500/src/main/java/io/github/apace100/apoli/mixin/GameRendererMixin.java#L153
 				float nightVisionStrength =
-					GameRenderer.nightVisionScale(livingEntity, CapturedRenderingState.INSTANCE.getTickDelta());
+					GameRenderer.getNightVisionScale(livingEntity, CapturedRenderingState.INSTANCE.getTickDelta());
 
 				if (nightVisionStrength > 0) {
 					// Just protecting against potential weird mod behavior
@@ -368,7 +433,7 @@ public final class CommonUniforms {
 		// I'm not sure what the best way to deal with this is, but the current approach seems to be an acceptable one -
 		// after all, disabling the overlay results in the intended effect of it not really looking like you're
 		// underwater on most shaderpacks. For now, I will leave this as-is, but it is something to keep in mind.
-		FogType submersionType = client.gameRenderer.mainCamera().getFluidInCamera();
+		FogType submersionType = client.gameRenderer.getMainCamera().getFluidInCamera();
 		boolean isSpectator = client.player != null && client.player.isSpectator();
 		if (submersionType == FogType.WATER) {
 			return 1;

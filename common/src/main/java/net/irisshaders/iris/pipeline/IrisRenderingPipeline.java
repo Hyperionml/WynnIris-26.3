@@ -2,22 +2,28 @@ package net.irisshaders.iris.pipeline;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.mojang.renderpearl.backend.opengl.GlConst;
-import com.mojang.renderpearl.backend.opengl.GlProgram;
-import com.mojang.renderpearl.backend.opengl.GlTexture;
+import com.mojang.blaze3d.opengl.GlConst;
+import com.mojang.blaze3d.opengl.GlProgram;
+import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.pipeline.RenderTarget;
-import com.mojang.renderpearl.backend.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.renderpearl.api.textures.GpuTexture;
-import com.mojang.renderpearl.api.textures.GpuTextureView;
-import com.mojang.renderpearl.api.vertex.VertexFormat;
+import com.mojang.blaze3d.textures.GpuTexture;
+import com.mojang.blaze3d.textures.GpuTextureView;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
+import net.irisshaders.iris.Iris;
+import net.irisshaders.iris.ambience.AmbienceRenderTargetPool;
+import net.irisshaders.iris.ambience.AmbienceSwitchTiming;
+import net.irisshaders.iris.vertices.ImmediateState;
 import net.irisshaders.iris.compat.dh.DHCompat;
 import net.irisshaders.iris.features.FeatureFlags;
 import net.irisshaders.iris.gl.GLDebug;
 import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gl.blending.AlphaTest;
+import net.irisshaders.iris.gl.blending.BlendMode;
+import net.irisshaders.iris.gl.blending.BlendModeFunction;
 import net.irisshaders.iris.gl.blending.BlendModeOverride;
 import net.irisshaders.iris.gl.buffer.ShaderStorageBufferHolder;
 import net.irisshaders.iris.gl.framebuffer.GlFramebuffer;
@@ -37,14 +43,19 @@ import net.irisshaders.iris.gl.state.ShaderAttributeInputs;
 import net.irisshaders.iris.gl.texture.DepthBufferFormat;
 import net.irisshaders.iris.gl.texture.TextureType;
 import net.irisshaders.iris.gui.option.IrisVideoSettings;
+import net.irisshaders.iris.gui.option.WynncraftDebugLog;
 import net.irisshaders.iris.helpers.FakeChainedJsonException;
 import net.irisshaders.iris.helpers.OptionalBoolean;
 import net.irisshaders.iris.helpers.Tri;
-import net.irisshaders.iris.layer.GbufferPrograms;
+import net.irisshaders.iris.mixin.GlStateManagerAccessor;
 import net.irisshaders.iris.mixin.LevelRendererAccessor;
+import net.irisshaders.iris.mixinterface.RenderTargetInterface;
 import net.irisshaders.iris.pathways.CenterDepthSampler;
 import net.irisshaders.iris.pathways.FullScreenQuadRenderer;
 import net.irisshaders.iris.pathways.HorizonRenderer;
+import net.irisshaders.iris.pathways.WynncraftBiomeFogRenderer;
+import net.irisshaders.iris.pathways.WynncraftSkyboxRenderer;
+import net.irisshaders.iris.pathways.WynncraftTransitionRenderer;
 import net.irisshaders.iris.pathways.colorspace.ColorSpace;
 import net.irisshaders.iris.pathways.colorspace.ColorSpaceConverter;
 import net.irisshaders.iris.pathways.colorspace.ColorSpaceFragmentConverter;
@@ -59,7 +70,7 @@ import net.irisshaders.iris.pipeline.programs.ShaderKey;
 import net.irisshaders.iris.pipeline.programs.ShaderLoadingMap;
 import net.irisshaders.iris.pipeline.programs.ShaderMap;
 import net.irisshaders.iris.pipeline.programs.ShaderSupplier;
-import net.irisshaders.iris.pipeline.transform.Patch;
+import net.irisshaders.iris.pipeline.programs.SodiumPrograms;
 import net.irisshaders.iris.pipeline.transform.PatchShaderType;
 import net.irisshaders.iris.pipeline.transform.ShaderPrinter;
 import net.irisshaders.iris.pipeline.transform.TransformPatcher;
@@ -91,16 +102,17 @@ import net.irisshaders.iris.targets.ClearPass;
 import net.irisshaders.iris.targets.ClearPassCreator;
 import net.irisshaders.iris.targets.RenderTargets;
 import net.irisshaders.iris.targets.backed.NativeImageBackedSingleColorTexture;
+import net.irisshaders.iris.uniforms.CameraUniforms;
 import net.irisshaders.iris.uniforms.CapturedRenderingState;
 import net.irisshaders.iris.uniforms.CommonUniforms;
 import net.irisshaders.iris.uniforms.FrameUpdateNotifier;
+import net.irisshaders.iris.uniforms.MatrixUniforms;
 import net.irisshaders.iris.uniforms.custom.CustomUniforms;
-import net.irisshaders.iris.vertices.sodium.terrain.FormatAnalyzer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.TextureFilteringMethod;
 import net.minecraft.client.gui.components.debug.DebugScreenDisplayer;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.world.level.dimension.DimensionType;
@@ -108,10 +120,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
-import org.lwjgl.opengl.*;
+import org.lwjgl.opengl.GL15C;
+import org.lwjgl.opengl.GL20C;
+import org.lwjgl.opengl.GL21C;
+import org.lwjgl.opengl.GL30C;
+import org.lwjgl.opengl.GL43C;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -121,6 +139,24 @@ import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRenderingPipeline {
+	private static final int WYNNCRAFT_PHOTON_VFX_TRANSLUCENT_BUFFER = 13;
+	private static final int PHOTON_CLOUD_HISTORY_TARGET = 11;
+	private static final int PHOTON_CLOUD_DATA_TARGET = 12;
+	private static final Vector4f PHOTON_CLOUD_HISTORY_NO_OCCLUSION_CLEAR = new Vector4f(0.0F, 0.0F, 0.0F, 1.0F);
+	private static final Vector4f PHOTON_CLOUD_DATA_FAR_CLEAR = new Vector4f(65504.0F, 0.0F, 0.0F, 0.0F);
+	private static final int[] MAIN_COLOR_DRAW_BUFFER = new int[]{0};
+	private static final int[] WYNNCRAFT_PHOTON_VFX_DRAW_BUFFER = new int[]{WYNNCRAFT_PHOTON_VFX_TRANSLUCENT_BUFFER};
+	private static final BlendModeOverride WYNNCRAFT_PHOTON_VFX_BLEND = new BlendModeOverride(new BlendMode(
+		BlendModeFunction.ONE.getGlId(),
+		BlendModeFunction.ONE_MINUS_SRC_ALPHA.getGlId(),
+		BlendModeFunction.ONE.getGlId(),
+		BlendModeFunction.ONE_MINUS_SRC_ALPHA.getGlId()));
+
+	@Nullable
+	private final AmbienceRenderTargetPool ambiencePool;
+	@Nullable
+	private final AmbienceRenderTargetPool.Allocation ambiencePoolAllocation;
+	private final List<AmbienceRenderTargetPool.ResourceRef> ambienceCustomImageRefs = new ArrayList<>();
 	private final RenderTargets renderTargets;
 	private final ShaderMap shaderMap;
 	private final CustomUniforms customUniforms;
@@ -129,16 +165,36 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	private final ComputeProgram[] setup;
 	private final boolean separateHardwareSamplers;
 	private final ProgramFallbackResolver resolver;
+	private final boolean wynncraftPhotonShaderPack;
+	private final boolean wynncraftFallbackVfxTranslucency;
 	private final Supplier<ShadowRenderTargets> shadowTargetsSupplier;
 	private final Set<GlProgram> loadedShaders;
+	private final List<GbufferFramebufferBinding> gbufferFramebuffers = new ArrayList<>();
+	// Distant Horizons framebuffers are tracked separately from gbufferFramebuffers: they need their
+	// pooled color attachments refreshed on resize, but must NOT have Minecraft's depth re-attached
+	// (DH owns its depth). See refreshPooledFramebufferAttachments / RenderTargets.refreshDHFramebuffer.
+	private final List<GbufferFramebufferBinding> dhFramebuffers = new ArrayList<>();
 	private final CompositeRenderer beginRenderer;
 	private final CompositeRenderer prepareRenderer;
 	private final CompositeRenderer deferredRenderer;
+	/**
+	 * Optional: when the active pack integrates with Voxy and declares aux
+	 * translucent colortex targets, this pass clears those targets at entity
+	 * pixels before deferred compositing, preventing Voxy LOD water from
+	 * bleeding through entities. Null if Voxy is absent or not applicable.
+	 */
+	private final net.irisshaders.iris.pathways.VoxyEntityDepthClearPass voxyEntityDepthClear;
+
+	/**
+	 * Voxy LOD depth texture access for the Wynncraft skybox sky classifier.
+	 * Null when Voxy is absent. Present whenever Voxy's Iris pipeline data is
+	 * reachable — independent of the aux-target requirement above.
+	 */
+	private final net.irisshaders.iris.pathways.VoxyLodDepth voxyLodDepth;
 	private final CompositeRenderer compositeRenderer;
 	private final FinalPassRenderer finalPassRenderer;
 	private final CustomTextureManager customTextureManager;
 	private final DynamicTexture whitePixel;
-	private final DynamicTexture biggerWhitePixel;
 	private final FrameUpdateNotifier updateNotifier;
 	private final CenterDepthSampler centerDepthSampler;
 	private final ColorSpaceConverter colorSpaceConverter;
@@ -146,6 +202,12 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	private final ImmutableSet<Integer> flippedAfterPrepare;
 	private final ImmutableSet<Integer> flippedAfterTranslucent;
 	private final HorizonRenderer horizonRenderer = new HorizonRenderer();
+	@Nullable
+	private WynncraftBiomeFogRenderer wynncraftBiomeFogRenderer;
+	@Nullable
+	private WynncraftSkyboxRenderer wynncraftSkyboxRenderer;
+	@Nullable
+	private WynncraftTransitionRenderer wynncraftTransitionRenderer;
 	@Nullable
 	private final ComputeProgram[] shadowComputes;
 	private final float sunPathRotation;
@@ -177,6 +239,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	private final int stackSize = 0;
 	private final boolean skipAllRendering;
 	private final CloudSetting dhCloudSetting;
+	private final SodiumPrograms sodiumPrograms;
 	public boolean isBeforeTranslucent;
 	private boolean initializedBlockIds;
 	private ShaderStorageBufferHolder shaderStorageBufferHolder;
@@ -191,6 +254,15 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	private boolean isRenderingWorld;
 	private boolean isMainBound;
 	private boolean shouldBindPBR;
+	private boolean runSetupComputesOnNextFrame;
+	private int ambiencePhotonCloudHistoryReseedFrames;
+	private static int ambiencePresentationMaskFrames;
+	private static int ambiencePreviousFrameTexture;
+	private static int ambiencePreviousFrameWidth;
+	private static int ambiencePreviousFrameHeight;
+	private static boolean ambiencePreviousFrameReady;
+	@Nullable
+	private static GlFramebuffer ambiencePreviousFrameFramebuffer;
 	private AbstractTexture currentNormalTexture;
 	private AbstractTexture currentSpecularTexture;
 	private ColorSpace currentColorSpace;
@@ -202,8 +274,41 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	private int albedoTex;
 
+
+	// Skybox fog/sky state: tracks active skybox for fog color override + post-process primary.
+	// Public for iris_wynncraftPrimarySkyboxId uniform access from CommonUniforms.
+	public static int displayedSkyboxId = 0;
+
+	// Grace period: a skybox id that just faded out or was switched away. Domes
+	// with this id stay GPU-discarded and can't re-trigger detection (preferred OR
+	// fallback) until the grace expires. Prevents the still-loaded dome entity
+	// from popping back as a floating patch or re-triggering a fade-in cycle.
+	public static int recentSkyboxId = 0;
+	public static long recentSkyboxExpiryMs = 0;
+	private static final long RECENT_SKYBOX_GRACE_MS = 10_000;
+
+	// Exponential smoothing replaces the old hold+fade state machine. No hold
+	// timer, no sticky branch, no edge transitions. Opacity decays smoothly
+	// when detection drops (resilient to EntityCulling gaps: a 1-frame gap
+	// causes a ~1% dip that recovers instantly) and fades in smoothly when
+	// detection appears. Frame-rate-independent via dt.
+	private long lastSkyboxFrameMs = 0;
+	public static float skyboxFadeOpacity = 0.0f;
+
+	// Debounce: a new skybox id must be detected for several consecutive frames
+	// before the display switches. Filters single-frame noise from passing
+	// through a wrong region's dome while teleporting/flying fast.
+	private int candidateSkyboxId = 0;
+	private int candidateFrameCount = 0;
+	private static final int SKYBOX_SWITCH_FRAMES = 3;
+
 	public IrisRenderingPipeline(ProgramSet programSet) {
+		long constructorStartNanos = System.nanoTime();
 		ShaderPrinter.resetPrintState();
+		this.ambiencePool = Iris.getAmbienceRenderTargetPoolForPipelineBuild();
+		this.ambiencePoolAllocation = ambiencePool == null ? null : ambiencePool.createAllocation(Iris.getAmbienceRenderTargetPoolProfileKeyForPipelineBuild());
+		boolean constructed = false;
+		try {
 
 		this.shouldRenderUnderwaterOverlay = programSet.getPackDirectives().underwaterOverlay();
 		this.supportsEndFlash = programSet.getPackDirectives().supportsEndFlash();
@@ -228,11 +333,13 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		this.frustumCulling = programSet.getPackDirectives().shouldUseFrustumCulling();
 		this.occlusionCulling = programSet.getPackDirectives().shouldUseOcclusionCulling();
 		this.resolver = new ProgramFallbackResolver(programSet);
+		String packName = Iris.getCurrentPackName();
+		this.wynncraftPhotonShaderPack = packName != null && packName.toLowerCase(Locale.ROOT).contains("photon");
+		boolean hasEntitiesTrans = programSet.get(ProgramId.EntitiesTrans).isPresent();
+		this.wynncraftFallbackVfxTranslucency = wynncraftPhotonShaderPack && !hasEntitiesTrans;
 		this.pack = programSet.getPack();
-        WorldRenderingSettings.INSTANCE.setVertexFormat(
-                FormatAnalyzer.createFormat(true, true, true, true)); // TODO 26.2... or never.
 
-		RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
+		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
 		GpuTexture depthTexture  = main.getDepthTexture();
 		int internalFormat = GlConst.toGlInternalId(depthTexture.getFormat());
 		DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
@@ -251,19 +358,31 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			}
 		}
 
+		long customImagesStartNanos = System.nanoTime();
 		this.customImages = new HashSet<>();
 		for (ImageInformation information : programSet.getPack().getIrisCustomImages()) {
-			if (information.isRelative()) {
+			if (ambiencePool != null && !information.isRelative() && information.clear()) {
+				AmbienceRenderTargetPool.AcquiredImage acquired = ambiencePool.acquireCustomImage(ambiencePoolAllocation, information);
+				customImages.add(acquired.image());
+				ambienceCustomImageRefs.add(acquired.ref());
+			} else if (information.isRelative()) {
 				customImages.add(new GlImage.Relative(information.name(), information.samplerName(), information.format(), information.internalTextureFormat(), information.type(), information.clear(), information.relativeWidth(), information.relativeHeight(), main.width, main.height));
 			} else {
 				customImages.add(new GlImage(information.name(), information.samplerName(), information.target(), information.format(), information.internalTextureFormat(), information.type(), information.clear(), information.width(), information.height(), information.depth()));
 			}
 		}
+		long customImagesNanos = System.nanoTime() - customImagesStartNanos;
 
 		this.clearImages = customImages.stream()
 			.filter(GlImage::shouldClear)
 			.map(ImageClearPass::create)
 			.collect(ImmutableList.toImmutableList());
+
+		// Post-process biome fog (mushroom_fields close fog for Mist Woods).
+		wynncraftBiomeFogRenderer = new WynncraftBiomeFogRenderer(main.width, main.height);
+		// Post-process skybox (primary only — cutouts render in-shader via EntityPatcher).
+		wynncraftSkyboxRenderer = new WynncraftSkyboxRenderer(main.width, main.height);
+		wynncraftTransitionRenderer = new WynncraftTransitionRenderer(main.width, main.height);
 
 		if (programSet.getPackDirectives().getParticleRenderingSettings() != ParticleRenderingSettings.UNSET) {
 			this.particleRenderingSettings = programSet.getPackDirectives().getParticleRenderingSettings();
@@ -273,8 +392,9 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			this.particleRenderingSettings = ParticleRenderingSettings.MIXED;
 		}
 
-
-		this.renderTargets = new RenderTargets(main.width, main.height, depthTexture, ((Blaze3dRenderTargetExt) main).iris$getDepthBufferVersion(), depthBufferFormat, programSet.getPackDirectives().getRenderTargetDirectives().getRenderTargetSettings(), programSet.getPackDirectives());
+		long renderTargetsStartNanos = System.nanoTime();
+		this.renderTargets = new RenderTargets(main.width, main.height, depthTexture, ((Blaze3dRenderTargetExt) main).iris$getDepthBufferVersion(), depthBufferFormat, programSet.getPackDirectives().getRenderTargetDirectives().getRenderTargetSettings(), programSet.getPackDirectives(), ambiencePool, ambiencePoolAllocation);
+		long renderTargetsNanos = System.nanoTime() - renderTargetsStartNanos;
 		this.sunPathRotation = programSet.getPackDirectives().getSunPathRotation();
 
 		PackShadowDirectives shadowDirectives = programSet.getPackDirectives().getShadowDirectives();
@@ -300,7 +420,6 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 		customTextureManager = new CustomTextureManager(programSet.getPackDirectives(), programSet.getPack().getCustomTextureDataMap(), programSet.getPack().getIrisCustomTextureDataMap(), programSet.getPack().getCustomNoiseTexture());
 		whitePixel = new NativeImageBackedSingleColorTexture(255, 255, 255, 255);
-		biggerWhitePixel = new NativeImageBackedSingleColorTexture(32, 32, 255, 255, 255, 255);
 
 		GlStateManager._activeTexture(GL20C.GL_TEXTURE0);
 
@@ -313,7 +432,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		this.shadowTargetsSupplier = () -> {
 			if (shadowRenderTargets == null) {
 				// TODO: Support more than two shadowcolor render targets
-				this.shadowRenderTargets = new ShadowRenderTargets(this, shadowMapResolution, shadowDirectives);
+				this.shadowRenderTargets = new ShadowRenderTargets(this, shadowMapResolution, shadowDirectives, ambiencePool, ambiencePoolAllocation);
 			}
 
 			return shadowRenderTargets;
@@ -406,12 +525,14 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		this.loadedShaders = new HashSet<>();
 
 
-		ShaderLoadingMap loadingMap = new ShaderLoadingMap((key, patchType) -> {
+		ShaderLoadingMap loadingMap = new ShaderLoadingMap(key -> {
 			try {
 				if (key.isShadow()) {
-					return createShadowShader(key.getName(), resolver.resolve(key.getProgram()), key, patchType);
+					return createShadowShader(key.getName(), resolver.resolve(key.getProgram()), key);
+				} else if (key == ShaderKey.WYNNCRAFT_VFX_TRANSLUCENT) {
+					return createShader(key.getName(), Optional.empty(), key);
 				} else {
-					return createShader(key.getName(), resolver.resolve(key.getProgram()), key, patchType);
+					return createShader(key.getName(), resolver.resolve(key.getProgram()), key);
 				}
 			} catch (FakeChainedJsonException e) {
 				destroyShaders();
@@ -472,6 +593,10 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			this.shadowRenderer = null;
 		}
 
+		// TODO: Create fallback Sodium shaders if the pack doesn't provide terrain shaders
+		//       Currently we use Sodium's shaders but they don't support EXP2 fog underwater.
+		this.sodiumPrograms = new SodiumPrograms(this, programSet, resolver, renderTargets, shadowTargetsSupplier, customUniforms);
+
 		this.setup = createSetupComputes(programSet.getSetup(), programSet, TextureStage.SETUP);
 
 		// first optimization pass
@@ -531,6 +656,188 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 		defaultFB = flippedAfterPrepare.contains(defaultTex) ? renderTargets.createFramebufferWritingToAlt(new int[] { defaultTex }) : renderTargets.createFramebufferWritingToMain(new int[] { defaultTex });
 		defaultFBAlt = flippedAfterTranslucent.contains(defaultTex) ? renderTargets.createFramebufferWritingToAlt(new int[] { defaultTex }) : renderTargets.createFramebufferWritingToMain(new int[] { defaultTex });
+
+		// Voxy LOD-water-through-entity occlusion fix. No-op if Voxy isn't
+		// loaded or the active pack has no aux-only translucent targets.
+		// The aux targets must be captured at the same flip state Voxy wrote
+		// them in, which is flippedAfterPrepare (Voxy injects during the
+		// terrain CUTOUT pass, before any flip to the translucent state).
+		this.voxyEntityDepthClear = net.irisshaders.iris.pathways.VoxyEntityDepthClearPass.tryCreate(
+			this, renderTargets, flippedAfterPrepare);
+
+		// Voxy LOD depth access for the skybox sky classifier. Unlike the pass
+		// above this needs no pack-declared aux targets: it only READS Voxy's
+		// depth texture, whereas the clear pass writes into pack-declared aux
+		// color targets. Any pack rendering Voxy LODs qualifies.
+		this.voxyLodDepth = net.irisshaders.iris.pathways.VoxyLodDepth.tryCreate(this);
+
+		if (ambiencePool != null) {
+			AmbienceRenderTargetPool.ProfilePressure pressure = getAmbienceProfilePressure();
+			WynncraftDebugLog.info("ambience-pipeline-build",
+				"Ambience pipeline build: customImages={}ms renderTargets={}ms total={}ms poolResources={} poolBytes={} poolBreakdown={} poolHits={} poolMisses={} poolReleases={} poolDestroyed={} profileResources={} profileSharedBytes={} profileExclusiveBytes={} profileSharedBreakdown={} profileExclusiveBreakdown={}",
+				customImagesNanos / 1_000_000L,
+				renderTargetsNanos / 1_000_000L,
+				(System.nanoTime() - constructorStartNanos) / 1_000_000L,
+				ambiencePool.getResourceCount(),
+				ambiencePool.getEstimatedBytes(),
+				ambiencePool.getBreakdown().compact(),
+				ambiencePool.getHits(),
+				ambiencePool.getMisses(),
+				ambiencePool.getReleases(),
+				ambiencePool.getDestroyedResources(),
+				pressure == null ? 0 : pressure.resources(),
+				pressure == null ? 0L : pressure.sharedBytes(),
+				pressure == null ? 0L : pressure.exclusiveBytes(),
+				pressure == null ? "none" : pressure.sharedBreakdown().compact(),
+				pressure == null ? "none" : pressure.exclusiveBreakdown().compact());
+		}
+		constructed = true;
+		} finally {
+			if (!constructed && ambiencePoolAllocation != null) {
+				ambiencePoolAllocation.close();
+			}
+		}
+	}
+
+	public void applyWorldRenderingSettings() {
+		WorldRenderingSettings.INSTANCE.setEntityIds(pack.getIdMap().getEntityIdMap());
+		WorldRenderingSettings.INSTANCE.setItemIds(pack.getIdMap().getItemIdMap());
+		WorldRenderingSettings.INSTANCE.setAmbientOcclusionLevel(packDirectives.getAmbientOcclusionLevel());
+		WorldRenderingSettings.INSTANCE.setDisableDirectionalShading(shouldDisableDirectionalShading());
+		WorldRenderingSettings.INSTANCE.setUseSeparateAo(packDirectives.shouldUseSeparateAo());
+		WorldRenderingSettings.INSTANCE.setBreaksAnisotropy(packDirectives.breaksAnisotropy());
+		WorldRenderingSettings.INSTANCE.setVoxelizeLightBlocks(packDirectives.shouldVoxelizeLightBlocks());
+		WorldRenderingSettings.INSTANCE.setSeparateEntityDraws(packDirectives.shouldUseSeparateEntityDraws());
+		WorldRenderingSettings.INSTANCE.setBlockStateIds(
+			BlockMaterialMapping.createBlockStateIdMap(pack.getIdMap().getBlockProperties(), pack.getIdMap().getTagEntries()));
+		WorldRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(pack.getIdMap().getBlockRenderTypeMap()));
+		initializedBlockIds = true;
+		sodiumPrograms.applyWorldRenderingSettings();
+	}
+
+	public void onAmbienceProfileActivated() {
+		onAmbienceProfileActivated(null);
+	}
+
+	public void onAmbienceProfileActivated(@Nullable AmbienceSwitchTiming timing) {
+		if (ambiencePool == null) {
+			return;
+		}
+
+		runSetupComputesOnNextFrame = true;
+		// A cache-hit reactivation reuses a cached pipeline whose DH framebuffer may have been left with a
+		// stale/clobbered depth attachment. Force DH to re-bind its own depth next frame even if DH's
+		// depth-texture id is unchanged (otherwise reconnectDHTextures' storedDepthTex guard would skip it).
+		if (dhCompat != null) {
+			dhCompat.markDepthAttachmentDirty();
+		}
+		CameraUniforms.resetPreviousCameraPositions();
+		MatrixUniforms.resetPreviousMatrices();
+		ShaderStorageBufferHolder.ResetStats ssboResetStats = shaderStorageBufferHolder == null ? new ShaderStorageBufferHolder.ResetStats(0, 0) : shaderStorageBufferHolder.resetBuffers();
+		ambiencePresentationMaskFrames = Math.max(ambiencePresentationMaskFrames, 1);
+		if (wynncraftPhotonShaderPack) {
+			ambiencePhotonCloudHistoryReseedFrames = Math.max(ambiencePhotonCloudHistoryReseedFrames, 1);
+		}
+		String mainTargetsBeforeClear = renderTargets.describeCreatedTargets();
+		String cloudTargetsBeforeClear = renderTargets.describeTargetPresence(8, 9, 10, 11, 12);
+		int createdTargetsBeforeClear = renderTargets.getCreatedTargetCount();
+		int fullClearPassesBeforeRebuild = clearPassesFull.size();
+		int clearPassesBeforeRebuild = clearPasses.size();
+
+		long phaseStartNanos = System.nanoTime();
+		renderTargets.forceFullClear();
+		if (timing != null) {
+			timing.addForceMainClearNanos(System.nanoTime() - phaseStartNanos);
+		}
+
+		phaseStartNanos = System.nanoTime();
+		rebuildMainClearPasses();
+		if (timing != null) {
+			timing.addRebuildMainClearPassesNanos(System.nanoTime() - phaseStartNanos);
+		}
+		String mainTargetsAfterClearPassRebuild = renderTargets.describeCreatedTargets();
+		String cloudTargetsAfterClearPassRebuild = renderTargets.describeTargetPresence(8, 9, 10, 11, 12);
+		int createdTargetsAfterClearPassRebuild = renderTargets.getCreatedTargetCount();
+
+		if (shadowRenderTargets != null) {
+			phaseStartNanos = System.nanoTime();
+			shadowRenderTargets.forceFullClear();
+			if (timing != null) {
+				timing.addForceShadowClearNanos(System.nanoTime() - phaseStartNanos);
+			}
+		}
+		if (shadowRenderer != null) {
+			phaseStartNanos = System.nanoTime();
+			shadowRenderer.refreshSamplingSettings();
+			if (timing != null) {
+				timing.addShadowSamplerRefreshNanos(System.nanoTime() - phaseStartNanos);
+			}
+		}
+
+		phaseStartNanos = System.nanoTime();
+		CustomImageReseedStats customImageReseedStats = clearCustomImagesForAmbienceReseed();
+		if (timing != null) {
+			timing.addCustomImageClearNanos(System.nanoTime() - phaseStartNanos);
+		}
+
+		WynncraftDebugLog.info("ambience-profile-activate-pool",
+			"Activated ambience pooled pipeline: poolResources={} poolBytes={} poolHits={} poolMisses={} poolReleases={} poolDestroyed={} sameShaderPack={} presentationMaskFrames={} photonCloudHistoryReseedFrames={} renderSun={} renderMoon={} renderStars={} renderSkyDisc={} sunPathRotation={} cloudSetting={} dhCloudSetting={} renderWeather={} renderWeatherParticles={} pack={} activeKey={} createdTargetsBeforeClear={} createdTargetsAfterClearPassRebuild={} clearPassesBeforeRebuild={}/{} clearPassesAfterRebuild={}/{} cloudTargetsBeforeClear={} cloudTargetsAfterClearPassRebuild={} mainTargetsBeforeClear={} mainTargetsAfterClearPassRebuild={} customImagesCleared={} customImagesSkipped={} ssboResetCount={} ssboResetBytes={} profilePressure={}",
+			ambiencePool.getResourceCount(), ambiencePool.getEstimatedBytes(), ambiencePool.getHits(), ambiencePool.getMisses(),
+			ambiencePool.getReleases(), ambiencePool.getDestroyedResources(), timing != null && timing.sameShaderPackAsPrevious(),
+			ambiencePresentationMaskFrames, ambiencePhotonCloudHistoryReseedFrames, shouldRenderSun, shouldRenderMoon, shouldRenderStars, shouldRenderSkyDisc, sunPathRotation,
+			cloudSetting, dhCloudSetting, shouldRenderWeather, shouldRenderWeatherParticles,
+			Iris.getCurrentPackName(), Iris.getActiveTransientShaderPackContextKey(),
+			createdTargetsBeforeClear, createdTargetsAfterClearPassRebuild, fullClearPassesBeforeRebuild, clearPassesBeforeRebuild,
+			clearPassesFull.size(), clearPasses.size(), cloudTargetsBeforeClear, cloudTargetsAfterClearPassRebuild,
+			mainTargetsBeforeClear, mainTargetsAfterClearPassRebuild, customImageReseedStats.cleared(), customImageReseedStats.skipped(),
+			ssboResetStats.count(), ssboResetStats.bytes(), getAmbienceProfilePressure());
+	}
+
+	private CustomImageReseedStats clearCustomImagesForAmbienceReseed() {
+		int cleared = 0;
+		int skipped = 0;
+		for (GlImage image : customImages) {
+			if (image.isPooledView()) {
+				image.clearTexture();
+				cleared++;
+			} else {
+				skipped++;
+			}
+		}
+		return new CustomImageReseedStats(cleared, skipped);
+	}
+
+	private void reseedPhotonCloudHistoryAfterAmbienceClear() {
+		if (ambiencePhotonCloudHistoryReseedFrames <= 0) {
+			return;
+		}
+
+		ambiencePhotonCloudHistoryReseedFrames--;
+		int clearedTextures = 0;
+		clearedTextures += renderTargets.clearTargetPairIfPresent(PHOTON_CLOUD_HISTORY_TARGET, PHOTON_CLOUD_HISTORY_NO_OCCLUSION_CLEAR);
+		clearedTextures += renderTargets.clearTargetPairIfPresent(PHOTON_CLOUD_DATA_TARGET, PHOTON_CLOUD_DATA_FAR_CLEAR);
+
+		WynncraftDebugLog.info("ambience-photon-cloud-history-reseed",
+			"Reseeded Photon ambience cloud history: clearedTextures={} remainingFrames={} cloudTargets={} pack={} activeKey={}",
+			clearedTextures, ambiencePhotonCloudHistoryReseedFrames, renderTargets.describeTargetPresence(11, 12),
+			Iris.getCurrentPackName(), Iris.getActiveTransientShaderPackContextKey());
+	}
+
+	private record CustomImageReseedStats(int cleared, int skipped) {
+	}
+
+	@Nullable
+	public AmbienceRenderTargetPool.ProfilePressure getAmbienceProfilePressure() {
+		return ambiencePoolAllocation == null ? null : ambiencePoolAllocation.pressure();
+	}
+
+	private void rebuildMainClearPasses() {
+		this.clearPassesFull.forEach(clearPass -> renderTargets.destroyFramebuffer(clearPass.getFramebuffer()));
+		this.clearPasses.forEach(clearPass -> renderTargets.destroyFramebuffer(clearPass.getFramebuffer()));
+		this.clearPassesFull = ClearPassCreator.createClearPasses(renderTargets, true,
+			packDirectives.getRenderTargetDirectives());
+		this.clearPasses = ClearPassCreator.createClearPasses(renderTargets, false,
+			packDirectives.getRenderTargetDirectives());
 	}
 
 	private ComputeProgram[] createShadowComputes(ComputeSource[] compute, ProgramSet programSet) {
@@ -542,7 +849,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 				ProgramBuilder builder;
 
 				try {
-					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), TextureStage.GBUFFERS_AND_SHADOW, customTextureMap, getTextureOverrides(TextureStage.GBUFFERS_AND_SHADOW));
+					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), TextureStage.GBUFFERS_AND_SHADOW, customTextureMap);
 
 					ShaderPrinter.printProgram(source.getName()).addSource(PatchShaderType.COMPUTE, transformed).print();
 
@@ -605,7 +912,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 				ProgramBuilder builder;
 
 				try {
-					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), stage, customTextureMap, getTextureOverrides(stage));
+					String transformed = TransformPatcher.patchCompute(source.getName(), source.getSource().orElse(null), stage, customTextureMap);
 
 					ShaderPrinter.printProgram(source.getName()).addSource(PatchShaderType.COMPUTE, transformed).print();
 
@@ -658,18 +965,17 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		return programs;
 	}
 
-	private ShaderSupplier createShader(String name, Optional<ProgramSource> source, ShaderKey key, Patch patch) throws IOException {
+	private ShaderSupplier createShader(String name, Optional<ProgramSource> source, ShaderKey key) throws IOException {
 		if (source.isEmpty()) {
 			return createFallbackShader(name, key);
 		}
 
 		return createShader(name, key, source.get(), key.getProgram(), key.getAlphaTest(), key.getVertexFormat(), key.getFogMode(),
-			key.isIntensity(), key.shouldIgnoreLightmap(), key.isGlint(), key.isText(), false, patch);
+			key.isIntensity(), key.shouldIgnoreLightmap(), key.isGlint(), key.isText(), key == ShaderKey.IE_COMPAT);
 	}
 
-	@Override
-	public Set<String> getTextureOverrides(TextureStage stage) {
-		return customTextureManager.getCustomTextureIdMap(stage).keySet();
+	public boolean shouldUseWynncraftFallbackVfxTranslucency() {
+		return wynncraftFallbackVfxTranslucency;
 	}
 
 	@Override
@@ -678,10 +984,13 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	}
 
 	private ShaderSupplier createShader(String name, ShaderKey key, ProgramSource source, ProgramId programId, AlphaTest fallbackAlpha,
-                                        VertexFormat vertexFormat, FogMode fogMode,
-                                        boolean isIntensity, boolean isFullbright, boolean isGlint, boolean isText, boolean isIE, Patch patch) throws IOException {
-		GlFramebuffer beforeTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, source.getDirectives().getDrawBuffers());
-		GlFramebuffer afterTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, source.getDirectives().getDrawBuffers());
+										VertexFormat vertexFormat, FogMode fogMode,
+										boolean isIntensity, boolean isFullbright, boolean isGlint, boolean isText, boolean isIE) throws IOException {
+		int[] drawBuffers = source.getDirectives().getDrawBuffers();
+		GlFramebuffer beforeTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, drawBuffers);
+		GlFramebuffer afterTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, drawBuffers);
+		trackGbufferFramebuffer(beforeTranslucent, flippedAfterPrepare, drawBuffers);
+		trackGbufferFramebuffer(afterTranslucent, flippedAfterTranslucent, drawBuffers);
 		boolean isLines = programId == ProgramId.Line && resolver.has(ProgramId.Line);
 
 
@@ -692,41 +1001,95 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 
 		ShaderSupplier extendedShader = ShaderCreator.create(this, name, key, source, programId, beforeTranslucent, afterTranslucent,
-			fallbackAlpha, vertexFormat, inputs, updateNotifier, this, flipped, fogMode, isIntensity, isFullbright, false, isLines, customUniforms, patch);
+			fallbackAlpha, vertexFormat, inputs, updateNotifier, this, flipped, fogMode, isIntensity, isFullbright, false, isLines, customUniforms);
 
 		return extendedShader;
 	}
 
 	private ShaderSupplier createFallbackShader(String name, ShaderKey key) throws IOException {
-		GlFramebuffer beforeTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, new int[]{0});
-		GlFramebuffer afterTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, new int[]{0});
+		boolean wynncraftVfxFallbackKey = key == ShaderKey.WYNNCRAFT_VFX_TRANSLUCENT;
+		boolean photonVfxLayer = wynncraftVfxFallbackKey
+			&& wynncraftFallbackVfxTranslucency
+			&& renderTargets.getRenderTargetCount() > WYNNCRAFT_PHOTON_VFX_TRANSLUCENT_BUFFER;
+		int[] drawBuffers = photonVfxLayer ? WYNNCRAFT_PHOTON_VFX_DRAW_BUFFER : MAIN_COLOR_DRAW_BUFFER;
+		BlendModeOverride blendModeOverride = photonVfxLayer ? WYNNCRAFT_PHOTON_VFX_BLEND : null;
+		GlFramebuffer beforeTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, drawBuffers);
+		GlFramebuffer afterTranslucent = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, drawBuffers);
+		trackGbufferFramebuffer(beforeTranslucent, flippedAfterPrepare, drawBuffers);
+		trackGbufferFramebuffer(afterTranslucent, flippedAfterTranslucent, drawBuffers);
 
 		ShaderSupplier shader = ShaderCreator.createFallback(name, key, beforeTranslucent, afterTranslucent,
-			key.getAlphaTest(), key.getVertexFormat(), null, this, key.getFogMode(),
-			key == ShaderKey.GLINT, key.isText(), key.hasDiffuseLighting(), key.isIntensity(), key.shouldIgnoreLightmap());
+			key.getAlphaTest(), key.getVertexFormat(), blendModeOverride, this, key.getFogMode(),
+			key.hasDiffuseLighting(), key.isGlint(), key.isText(), key.isIntensity(), key.shouldIgnoreLightmap(),
+			photonVfxLayer);
 
 		return shader;
 	}
 
-	private ShaderSupplier createShadowShader(String name, Optional<ProgramSource> source, ShaderKey key, Patch patchType) throws IOException {
+	private void trackGbufferFramebuffer(GlFramebuffer framebuffer, ImmutableSet<Integer> stageWritesToAlt, int[] drawBuffers) {
+		if (ambiencePool != null) {
+			gbufferFramebuffers.add(new GbufferFramebufferBinding(framebuffer, stageWritesToAlt, drawBuffers.clone()));
+		}
+	}
+
+	private void trackDHFramebuffer(GlFramebuffer framebuffer, ImmutableSet<Integer> stageWritesToAlt, int[] drawBuffers) {
+		if (ambiencePool != null) {
+			dhFramebuffers.add(new GbufferFramebufferBinding(framebuffer, stageWritesToAlt, drawBuffers.clone()));
+		}
+	}
+
+	private void refreshPooledFramebufferAttachments() {
+		for (GbufferFramebufferBinding binding : gbufferFramebuffers) {
+			renderTargets.refreshGbufferFramebuffer(binding.framebuffer(), binding.stageWritesToAlt(), binding.drawBuffers());
+		}
+
+		sodiumPrograms.refreshMainFramebuffers();
+
+		int defaultTex = packDirectives.getFallbackTex();
+		renderTargets.refreshGbufferFramebuffer(defaultFB, flippedAfterPrepare, new int[]{defaultTex});
+		renderTargets.refreshGbufferFramebuffer(defaultFBAlt, flippedAfterTranslucent, new int[]{defaultTex});
+
+		if (voxyEntityDepthClear != null) {
+			voxyEntityDepthClear.refreshFramebufferAttachments();
+		}
+
+		// DH framebuffers: re-point their pooled color attachments only. Their depth belongs to Distant
+		// Horizons (not Minecraft), so we use the color-only refresh and then ask DH to re-bind its own
+		// depth next frame (reconnectDHTextures) — otherwise the swapped pooled textures would leave DH
+		// drawing into stale color buffers and against the wrong depth.
+		if (!dhFramebuffers.isEmpty()) {
+			for (GbufferFramebufferBinding binding : dhFramebuffers) {
+				renderTargets.refreshDHFramebuffer(binding.framebuffer(), binding.stageWritesToAlt(), binding.drawBuffers());
+			}
+			if (dhCompat != null) {
+				dhCompat.markDepthAttachmentDirty();
+			}
+		}
+	}
+
+	private record GbufferFramebufferBinding(GlFramebuffer framebuffer, ImmutableSet<Integer> stageWritesToAlt,
+											 int[] drawBuffers) {
+	}
+
+	private ShaderSupplier createShadowShader(String name, Optional<ProgramSource> source, ShaderKey key) throws IOException {
 		if (source.isEmpty()) {
 			return createFallbackShadowShader(name, key);
 		}
 
 		return createShadowShader(name, key, source.get(), key.getProgram(), key.getAlphaTest(), key.getVertexFormat(),
-			key.isIntensity(), key.shouldIgnoreLightmap(), key.isText(), false, patchType);
+			key.isIntensity(), key.shouldIgnoreLightmap(), key.isText(), key == ShaderKey.IE_COMPAT_SHADOW);
 	}
 
 	private ShaderSupplier createFallbackShadowShader(String name, ShaderKey key) throws IOException {
 		ShaderSupplier shader = ShaderCreator.createFallbackShadow(name, key, shadowTargetsSupplier,
 			key.getAlphaTest(), key.getVertexFormat(), BlendModeOverride.OFF, this, key.getFogMode(),
-			key == ShaderKey.GLINT, key.isText(), key.hasDiffuseLighting(), key.isIntensity(), key.shouldIgnoreLightmap());
+			key.hasDiffuseLighting(), key.isGlint(), key.isText(), key.isIntensity(), key.shouldIgnoreLightmap());
 
 		return shader;
 	}
 
 	private ShaderSupplier createShadowShader(String name, ShaderKey key, ProgramSource source, ProgramId programId, AlphaTest fallbackAlpha,
-                                              VertexFormat vertexFormat, boolean isIntensity, boolean isFullbright, boolean isText, boolean isIE, Patch patchType) throws IOException {
+											  VertexFormat vertexFormat, boolean isIntensity, boolean isFullbright, boolean isText, boolean isIE) throws IOException {
 		boolean isLines = programId == ProgramId.Line && resolver.has(ProgramId.Line);
 
 		ShaderAttributeInputs inputs = new ShaderAttributeInputs(vertexFormat, isFullbright, isLines, false, isText, isIE);
@@ -734,7 +1097,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		Supplier<ImmutableSet<Integer>> flipped = () -> flippedBeforeShadow;
 
 		ShaderSupplier extendedShader = ShaderCreator.createShadow(this, name, key, source, programId, shadowTargetsSupplier,
-			fallbackAlpha, vertexFormat, inputs, updateNotifier, this, flipped, FogMode.PER_VERTEX, isIntensity, isFullbright, true, isLines, customUniforms, patchType);
+			fallbackAlpha, vertexFormat, inputs, updateNotifier, this, flipped, FogMode.PER_VERTEX, isIntensity, isFullbright, true, isLines, customUniforms);
 
 		return extendedShader;
 	}
@@ -817,13 +1180,11 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			}
 		}
 		this.phase = phase;
-		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
 	@Override
 	public void setOverridePhase(WorldRenderingPhase phase) {
 		this.overridePhase = phase;
-		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
 	@Override
@@ -872,14 +1233,13 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	@Override
 	public void beginLevelRendering() {
-
 		isRenderingWorld = true;
 
 		if (!initializedBlockIds) {
 			WorldRenderingSettings.INSTANCE.setBlockStateIds(
 				BlockMaterialMapping.createBlockStateIdMap(pack.getIdMap().getBlockProperties(), pack.getIdMap().getTagEntries()));
 			WorldRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(pack.getIdMap().getBlockRenderTypeMap()));
-			Minecraft.getInstance().levelExtractor.allChanged();
+			Minecraft.getInstance().levelRenderer.allChanged();
 			initializedBlockIds = true;
 		}
 
@@ -903,7 +1263,9 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 				}
 			} else {
 				// Clear depth first, regardless of any color clearing.
-                RenderSystem.getDevice().createCommandEncoder().clearDepthTexture(shadowRenderTargets.getDepthTexture(), 1.0f);
+				shadowRenderTargets.getDepthSourceFb().bind();
+				GlStateManager._depthMask(true);
+				GlStateManager._clear(GL21C.GL_DEPTH_BUFFER_BIT);
 
 				ImmutableList<ClearPass> passes;
 
@@ -938,7 +1300,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		// Update custom uniforms
 		this.customUniforms.update();
 
-		RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
+		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
 
 		GpuTexture depthTexture = main.getDepthTexture();
 		DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(GlConst.toGlInternalId(main.getDepthTexture().getFormat()));
@@ -947,6 +1309,19 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			main.height, depthBufferFormat, packDirectives);
 
 		if (changed) {
+			if (ambiencePool != null) {
+				refreshPooledFramebufferAttachments();
+				// A pooled resize recreates the pooled render targets — including Photon's clear=false temporal
+				// cloud-history buffers (colortex 11/12), which come back uninitialized (→ white sky) — and it
+				// invalidates the previous-frame reprojection history (→ terrain smears as the camera moves). An
+				// ambience *switch* already runs this cleanup after swapping the pooled targets; a plain *resize*
+				// did not. Mirror it: reseed the cloud history next frame and reset the reprojection baseline.
+				if (wynncraftPhotonShaderPack) {
+					ambiencePhotonCloudHistoryReseedFrames = Math.max(ambiencePhotonCloudHistoryReseedFrames, 1);
+				}
+				CameraUniforms.resetPreviousCameraPositions();
+				MatrixUniforms.resetPreviousMatrices();
+			}
 			beginRenderer.recalculateSizes();
 			prepareRenderer.recalculateSizes();
 			deferredRenderer.recalculateSizes();
@@ -957,6 +1332,16 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			}
 
 			customImages.forEach(image -> image.updateNewSize(main.width, main.height));
+
+			if (wynncraftBiomeFogRenderer != null) {
+				wynncraftBiomeFogRenderer.rebuild(main.width, main.height);
+			}
+			if (wynncraftSkyboxRenderer != null) {
+				wynncraftSkyboxRenderer.rebuild(main.width, main.height);
+			}
+			if (wynncraftTransitionRenderer != null) {
+				wynncraftTransitionRenderer.rebuild(main.width, main.height);
+			}
 
 			this.clearPassesFull.forEach(clearPass -> renderTargets.destroyFramebuffer(clearPass.getFramebuffer()));
 			this.clearPasses.forEach(clearPass -> renderTargets.destroyFramebuffer(clearPass.getFramebuffer()));
@@ -991,6 +1376,8 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			clearPass.execute(fogColor);
 		}
 
+		reseedPhotonCloudHistoryAfterAmbienceClear();
+
 		GLDebug.popGroup();
 
 		// Make sure to switch back to the main framebuffer. If we forget to do this then our alt buffers might be
@@ -998,28 +1385,42 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		//
 		// If we forget to do this, then weird lines appear at the top of the screen and the right of the screen
 		// on Sildur's Vibrant Shaders.
-		Minecraft.getInstance().gameRenderer.mainRenderTarget().iris$bindFramebuffer();
+		Minecraft.getInstance().getMainRenderTarget().iris$bindFramebuffer();
 		isMainBound = true;
 
-		if (changed) {
-			boolean hasRun = false;
-
-			for (ComputeProgram program : setup) {
-				if (program != null) {
-					hasRun = true;
-					program.use();
-					program.dispatch(1, 1);
-				}
-			}
-
-			if (hasRun) {
-				ComputeProgram.unbind();
-			}
+		boolean shouldRunSetupComputes = changed || runSetupComputesOnNextFrame;
+		if (shouldRunSetupComputes) {
+			String setupReason = changed
+				? (runSetupComputesOnNextFrame ? "resize+ambience-activation" : "resize")
+				: "ambience-activation";
+			runSetupComputesOnNextFrame = false;
+			runSetupComputes(setupReason);
 		}
 
 		beginRenderer.renderAll();
 
 		isBeforeTranslucent = true;
+	}
+
+	private void runSetupComputes(String reason) {
+		boolean hasRun = false;
+		long setupStartNanos = System.nanoTime();
+
+		for (ComputeProgram program : setup) {
+			if (program != null) {
+				hasRun = true;
+				program.use();
+				program.dispatch(1, 1);
+			}
+		}
+
+		if (hasRun) {
+			ComputeProgram.unbind();
+			if (WynncraftDebugLog.shouldLog("ambience-setup-computes")) {
+				WynncraftDebugLog.info("ambience-setup-computes",
+					"Ran setup computes for {} in {}us", reason, (System.nanoTime() - setupStartNanos) / 1_000L);
+			}
+		}
 	}
 
 	@Override
@@ -1030,6 +1431,30 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 		prepareRenderer.renderAll();
 	}
+
+	// Skybox fog color override: when non-null, MixinFogRenderer uses this instead of vanilla.
+	// Set at end of each frame based on active skybox state. Affects shader pack fog + reflections.
+	// Blended with vanilla fog using skyboxFadeOpacity for smooth transitions.
+	public static float[] skyboxFogColor = null;
+	public static float skyboxFogBlendFactor = 0.0f;
+
+	// Biome fog: set by MixinFogRenderer when player is in mushroom_fields (Mist Woods).
+	// Read by finalizeLevelRendering() to drive post-process fog pass.
+	public static volatile boolean biomeFogActive = false;
+	public static volatile float biomeFogStart = 0.0f;
+	public static volatile float biomeFogEnd = 0.0f;
+	private float biomeFogOpacity = 0.0f;
+
+	private static final float[][] SKYBOX_FOG_COLORS = {
+		null,                          // 0: unused
+		null,                          // 1: Memory Mist — light, no darkening
+		null,                          // 2: Memory Fog — light, no darkening
+		{0.05f, 0.05f, 0.05f},        // 3: Stormy — near-black
+		{0.10f, 0.02f, 0.02f},        // 4: War Surface — dark red
+		{0.05f, 0.05f, 0.05f},        // 5: War Heights — near-black
+		null,                          // 6: Light — bright, no darkening
+		{0.08f, 0.02f, 0.02f},        // 7: Red Lightning — dark red
+	};
 
 	@Override
 	public void addDebugText(DebugScreenDisplayer messages) {
@@ -1068,7 +1493,37 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		// all non-translucent content, as required.
 		renderTargets.copyPreTranslucentDepth();
 
+		// If Voxy is integrated and the pack declares aux translucent targets,
+		// clear those targets at pixels where vanilla opaque geometry occludes
+		// the LOD water. Must run after copyPreTranslucentDepth (so depthtex1
+		// is fresh with entity depth) and before deferredRenderer.renderAll
+		// (so the composite sees the cleared buffers).
+		if (voxyEntityDepthClear != null) {
+			voxyEntityDepthClear.render();
+		}
+
 		deferredRenderer.renderAll();
+
+		// Paint the Wynncraft procedural skybox into the color buffer BEFORE translucents
+		// run. This makes translucent VFX display entities (rifts, memory-mist volumes,
+		// etc.) blend over the painted skybox during the translucent pass, exactly like
+		// Wynncraft RP where the skybox entity is itself a translucent draw. Running this
+		// after beginTranslucents's earlier late post-process caused large VFX to be
+		// wiped out: translucents don't write depth, so their pixels stayed at clear
+		// depth and got overwritten as sky.
+		if (wynncraftSkyboxRenderer != null && displayedSkyboxId > 0 && skyboxFadeOpacity > 0.001f) {
+			com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+			int dhDepthTex = dhCompat != null ? dhCompat.getDepthTex() : 0;
+			int voxyDepthTex = voxyLodDepth != null ? voxyLodDepth.currentDepthTexId() : 0;
+			wynncraftSkyboxRenderer.renderSkyPaint(
+				main.getDepthTexture().iris$getGlId(),
+				(GlTexture) main.getColorTexture(),
+				computeWynncraftGameTime(),
+				skyboxFadeOpacity,
+				displayedSkyboxId,
+				dhDepthTex,
+				voxyDepthTex);
+		}
 
 		// note: we are careful not to touch the lightmap texture unit or overlay color texture unit here,
 		// so we don't need to do anything to restore them if needed.
@@ -1088,11 +1543,307 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		removePhaseIfNeeded();
 		compositeRenderer.renderAll();
 		finalPassRenderer.renderFinalPass();
+
+		// Wynncraft skybox fade — exponential smoothing.
+		//
+		// Replaces the old hold+fade+sticky state machine that had three
+		// interacting failure modes (see git history). The new approach:
+		// - Detection present → opacity smoothly approaches 1.0
+		// - Detection absent → opacity decays exponentially toward 0.0
+		// - No hold timer, no sticky branch, no edge transitions
+		// EntityCulling gaps (1-2 frames) cause an imperceptible ~1% opacity
+		// dip that recovers the next frame. Real departures produce a smooth
+		// ~4s fade. Item toggles get a responsive ~4s exit + ~2s re-entry.
+		// Grace period blocks re-trigger from still-loaded dome entities.
+		{
+			int preferredId = ImmediateState.consumeSkyboxPreferred();
+			int fallbackId = ImmediateState.consumeSkyboxFallback();
+			long now = System.currentTimeMillis();
+
+			// Detection: preferred wins; fallback only for initial detection
+			// when no primary exists. Grace blocks both preferred and fallback
+			// for the recently-faded id (the dome is still loaded but the
+			// skybox effect is no longer wanted).
+			int detectedId;
+			if (preferredId > 0
+				&& !(preferredId == recentSkyboxId && now < recentSkyboxExpiryMs)) {
+				detectedId = preferredId;
+			} else if (fallbackId > 0 && displayedSkyboxId == 0
+				&& !(fallbackId == recentSkyboxId && now < recentSkyboxExpiryMs)) {
+				detectedId = fallbackId;
+			} else {
+				detectedId = 0;
+			}
+
+			// Frame-rate-independent dt, clamped to avoid jumps after pauses
+			float dt = Math.max(0.001f, Math.min(0.25f,
+				(now - lastSkyboxFrameMs) / 1000.0f));
+			lastSkyboxFrameMs = now;
+
+			if (detectedId > 0 && detectedId <= 7) {
+				if (detectedId != displayedSkyboxId) {
+					// Debounce: require N consecutive frames of a new id before
+					// switching. Filters single-frame noise from passing through
+					// a wrong region's dome while teleporting fast.
+					if (detectedId == candidateSkyboxId) {
+						candidateFrameCount++;
+					} else {
+						candidateSkyboxId = detectedId;
+						candidateFrameCount = 1;
+					}
+					if (displayedSkyboxId == 0 || candidateFrameCount >= SKYBOX_SWITCH_FRAMES) {
+						if (displayedSkyboxId > 0) {
+							recentSkyboxId = displayedSkyboxId;
+							recentSkyboxExpiryMs = now + RECENT_SKYBOX_GRACE_MS;
+						}
+						displayedSkyboxId = detectedId;
+						candidateSkyboxId = 0;
+						candidateFrameCount = 0;
+					}
+				} else {
+					candidateSkyboxId = 0;
+					candidateFrameCount = 0;
+				}
+				// Fade in: ~0.5s time constant → reaches ~0.98 in 2s
+				// (only advances when detectedId matches displayedSkyboxId, so
+				// an uncommitted candidate doesn't affect opacity)
+				if (detectedId == displayedSkyboxId) {
+					float fadeInAlpha = 1.0f - (float) Math.exp(-dt / 0.5f);
+					skyboxFadeOpacity += (1.0f - skyboxFadeOpacity) * fadeInAlpha;
+				}
+			} else if (displayedSkyboxId > 0) {
+				// Fade out: two-phase exponential for resilience + responsiveness.
+				// Above 50% opacity, decay slowly (tau=2.0s) so EntityCulling gaps
+				// of a few hundred ms cause only a small dip that recovers. Below
+				// 50%, decay faster (tau=0.6s) for a crisp tail.
+				float tau = skyboxFadeOpacity > 0.5f ? 2.0f : 0.6f;
+				skyboxFadeOpacity *= (float) Math.exp(-dt / tau);
+
+				// Keep grace refreshed throughout the fade so the dome stays
+				// discarded and can't re-trigger even if it outlives the fade.
+				recentSkyboxId = displayedSkyboxId;
+				recentSkyboxExpiryMs = now + RECENT_SKYBOX_GRACE_MS;
+
+				if (skyboxFadeOpacity < 0.005f) {
+					skyboxFadeOpacity = 0.0f;
+					displayedSkyboxId = 0;
+				}
+			}
+
+			// Fog/sky/boost state — only for dark skyboxes (3,4,5,7), NOT when raining,
+			// and scaled by daylight (no darkening at night — scene already dark).
+			// This is separate from the sky overlay which always renders.
+			boolean isDarkSkybox = (displayedSkyboxId == 3 || displayedSkyboxId == 4
+				|| displayedSkyboxId == 5 || displayedSkyboxId == 7);
+			boolean mcIsRaining = Minecraft.getInstance().level != null
+				&& Minecraft.getInstance().level.getRainLevel(
+					CapturedRenderingState.INSTANCE.getTickDelta()) > 0.2f;
+
+			if (isDarkSkybox && !mcIsRaining && skyboxFadeOpacity > 0.001f) {
+				// Daylight factor: 1.0 at noon, 0.0 at midnight.
+				// No darkening at night since the scene is already dark.
+				float daylightFactor = 0.0f;
+				if (Minecraft.getInstance().level != null) {
+					long dayTime = Minecraft.getInstance().level.getDayTime() % 24000L;
+					if (dayTime < 12000) {
+						daylightFactor = (float) Math.sin(dayTime * Math.PI / 12000.0);
+					} else {
+						daylightFactor = Math.max(0.0f,
+							-(float) Math.sin((dayTime - 12000) * Math.PI / 12000.0));
+					}
+				}
+				float sceneDarken = IrisVideoSettings.wynncraftSceneDarkening / 100.0f;
+				skyboxFogColor = (displayedSkyboxId < SKYBOX_FOG_COLORS.length)
+					? SKYBOX_FOG_COLORS[displayedSkyboxId] : null;
+				skyboxFogBlendFactor = skyboxFadeOpacity * sceneDarken * daylightFactor;
+			} else {
+				skyboxFogColor = null;
+				skyboxFogBlendFactor = 0.0f;
+			}
+		}
+
+		// Wynncraft biome fog: post-process close fog for mushroom_fields (Mist Woods).
+		// Applied BEFORE skybox so that skybox overlay renders on top of fogged terrain.
+		if (wynncraftBiomeFogRenderer != null) {
+			// Smooth fade: ramp opacity up/down over ~1 second for biome transitions.
+			float targetOpacity = biomeFogActive ? 1.0f : 0.0f;
+			biomeFogOpacity += (targetOpacity - biomeFogOpacity) * 0.05f; // ~1s at 60fps
+			if (Math.abs(biomeFogOpacity - targetOpacity) < 0.005f) biomeFogOpacity = targetOpacity;
+
+			if (biomeFogOpacity > 0.001f) {
+				com.mojang.blaze3d.pipeline.RenderTarget mainRT = Minecraft.getInstance().getMainRenderTarget();
+
+				// Apply minimum fog distance: if user requested a farther fog end than
+				// the biome's default, push it out while preserving the fog's thickness.
+				// Clamp thickness to a sane positive minimum so degenerate or inverted
+				// biome attributes (fogStart >= fogEnd) don't propagate into the shader.
+				float fogStart = biomeFogStart;
+				float fogEnd = biomeFogEnd;
+				int minDistance = IrisVideoSettings.wynncraftMistWoodsFogMinDistance;
+				if (minDistance > 0 && minDistance > fogEnd) {
+					float thickness = Math.max(1.0f, fogEnd - fogStart);
+					fogEnd = minDistance;
+					fogStart = fogEnd - thickness;
+				}
+
+				// Inverse power curve: slider 0 and 100 stay unchanged, but mid
+				// values are pulled up toward 1.0. Compensates for the perceived
+				// nonlinearity of fog compositing — small fogFactor reductions
+				// below full saturation have a large visual impact, so 80% slider
+				// should feel closer to ~90% effective density.
+				float fogDensitySlider = IrisVideoSettings.wynncraftMistWoodsFogDensity / 100.0f;
+				float fogDensity = 1.0f - (float) Math.pow(1.0f - fogDensitySlider, 1.5);
+				float warmthReductionStrength = IrisVideoSettings.wynncraftMistWoodsFogSunTintReduction
+					? IrisVideoSettings.wynncraftMistWoodsFogSunTintAmount / 100.0f
+					: 0.0f;
+				wynncraftBiomeFogRenderer.render(
+					mainRT.getDepthTexture().iris$getGlId(),
+					renderTargets.getDepthTextureNoTranslucents().iris$getGlId(),
+					(GlTexture) mainRT.getColorTexture(),
+					fogStart,
+					fogEnd,
+					biomeFogOpacity,
+					fogDensity,
+					warmthReductionStrength);
+			}
+		}
+
+		// Apply atmospheric tint, darkening, and directional fog to terrain/entities.
+		// Sky pixels were painted at beginTranslucents — this pass leaves them alone so
+		// VFX that blended over the skybox during the translucent pass are preserved.
+		if (wynncraftSkyboxRenderer != null && displayedSkyboxId > 0 && skyboxFadeOpacity > 0.001f) {
+			com.mojang.blaze3d.pipeline.RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+			int dhDepthTex = dhCompat != null ? dhCompat.getDepthTex() : 0;
+			int voxyDepthTex = voxyLodDepth != null ? voxyLodDepth.currentDepthTexId() : 0;
+			wynncraftSkyboxRenderer.renderSceneEffects(
+				main.getDepthTexture().iris$getGlId(),
+				(GlTexture) main.getColorTexture(),
+				computeWynncraftGameTime(),
+				skyboxFadeOpacity,
+				displayedSkyboxId,
+				dhDepthTex,
+				voxyDepthTex);
+		}
+
+		// Wynncraft transition rendering — independent of skybox state.
+		// CPU-detected transitions from text display entities OR debug keys.
+		if (wynncraftTransitionRenderer != null) {
+			ImmediateState.TransitionDetection cpuTrans = ImmediateState.consumeTransitionDetection();
+
+			int transType = cpuTrans.type();
+			float transProgress = cpuTrans.opacity() / 255.0f;
+			int transColor = cpuTrans.color();
+
+			if (transType > 0 && transProgress > 0.001f) {
+				com.mojang.blaze3d.pipeline.RenderTarget mainRT = Minecraft.getInstance().getMainRenderTarget();
+				wynncraftTransitionRenderer.render(
+					(GlTexture) mainRT.getColorTexture(),
+					computeWynncraftGameTime(),
+					transType,
+					transProgress,
+					transColor);
+			}
+		}
+	}
+
+	private float computeWynncraftGameTime() {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level != null) {
+			// Use modular time to avoid float precision loss on long-running servers.
+			// On Wynncraft, getGameTime() can be hundreds of millions of ticks.
+			// Without modulo, GameTime * 12000 in the shader produces values too large
+			// for float precision, causing noise functions to return static values.
+			// Cycle every 24000 ticks (one Minecraft day) — matches vanilla GameTime.
+			long ticks = mc.level.getGameTime() % 24000L;
+			float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
+			return (float) ((ticks + partial) / 24000.0);
+		}
+		return 0.0f;
 	}
 
 	@Override
 	public void finalizeGameRendering() {
-		colorSpaceConverter.process((GlTexture) Minecraft.getInstance().gameRenderer.mainRenderTarget().getColorTexture());
+		RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
+		colorSpaceConverter.process((GlTexture) main.getColorTexture());
+
+		boolean restoredPreviousFrame = false;
+		if (ambiencePresentationMaskFrames > 0) {
+			restoredPreviousFrame = restoreAmbiencePreviousFrame(main);
+			ambiencePresentationMaskFrames--;
+				if (WynncraftDebugLog.shouldLog("ambience-presentation-mask")) {
+					WynncraftDebugLog.info("ambience-presentation-mask",
+						"Ambience presentation mask: restoredPreviousFrame={} remainingFrames={} ready={} size={}x{} pack={} activeKey={}",
+						restoredPreviousFrame, ambiencePresentationMaskFrames, ambiencePreviousFrameReady, main.width, main.height,
+						Iris.getCurrentPackName(), Iris.getActiveTransientShaderPackContextKey());
+				}
+			}
+
+		if (!restoredPreviousFrame || ambiencePreviousFrameReady) {
+			captureAmbiencePreviousFrame(main);
+		}
+	}
+
+	private boolean restoreAmbiencePreviousFrame(RenderTarget main) {
+		if (!ambiencePreviousFrameReady || ambiencePreviousFrameFramebuffer == null
+			|| ambiencePreviousFrameWidth != main.width || ambiencePreviousFrameHeight != main.height) {
+			return false;
+		}
+
+		int mainFramebuffer = ((RenderTargetInterface) main).iris$getFramebufferId();
+		IrisRenderSystem.blitFramebuffer(ambiencePreviousFrameFramebuffer.getId(), mainFramebuffer,
+			0, 0, main.width, main.height,
+			0, 0, main.width, main.height,
+			GL30C.GL_COLOR_BUFFER_BIT, GL30C.GL_NEAREST);
+		return true;
+	}
+
+	private void captureAmbiencePreviousFrame(RenderTarget main) {
+		if (!ensureAmbiencePreviousFrameResources(main.width, main.height)) {
+			return;
+		}
+
+		((RenderTargetInterface) main).iris$bindFramebuffer();
+		IrisRenderSystem.copyTexSubImage2D(ambiencePreviousFrameTexture, GL30C.GL_TEXTURE_2D, 0, 0, 0, 0, 0, main.width, main.height);
+		ambiencePreviousFrameReady = true;
+	}
+
+	private boolean ensureAmbiencePreviousFrameResources(int width, int height) {
+		if (width <= 0 || height <= 0) {
+			return false;
+		}
+
+		if (ambiencePreviousFrameTexture != 0 && ambiencePreviousFrameWidth == width && ambiencePreviousFrameHeight == height) {
+			return true;
+		}
+
+		destroyAmbiencePreviousFrameResources();
+		ambiencePreviousFrameTexture = GlStateManager._genTexture();
+		IrisRenderSystem.texImage2D(ambiencePreviousFrameTexture, GL30C.GL_TEXTURE_2D, 0, GL30C.GL_RGBA8, width, height, 0, GL30C.GL_RGBA, GL30C.GL_UNSIGNED_BYTE, null);
+		IrisRenderSystem.texParameteri(ambiencePreviousFrameTexture, GL30C.GL_TEXTURE_2D, GL30C.GL_TEXTURE_MIN_FILTER, GL30C.GL_NEAREST);
+		IrisRenderSystem.texParameteri(ambiencePreviousFrameTexture, GL30C.GL_TEXTURE_2D, GL30C.GL_TEXTURE_MAG_FILTER, GL30C.GL_NEAREST);
+		IrisRenderSystem.texParameteri(ambiencePreviousFrameTexture, GL30C.GL_TEXTURE_2D, GL30C.GL_TEXTURE_WRAP_S, GL30C.GL_CLAMP_TO_EDGE);
+		IrisRenderSystem.texParameteri(ambiencePreviousFrameTexture, GL30C.GL_TEXTURE_2D, GL30C.GL_TEXTURE_WRAP_T, GL30C.GL_CLAMP_TO_EDGE);
+
+		ambiencePreviousFrameFramebuffer = new GlFramebuffer();
+		ambiencePreviousFrameFramebuffer.addColorAttachment(0, ambiencePreviousFrameTexture);
+		ambiencePreviousFrameFramebuffer.readBuffer(0);
+		ambiencePreviousFrameWidth = width;
+		ambiencePreviousFrameHeight = height;
+		return true;
+	}
+
+	private void destroyAmbiencePreviousFrameResources() {
+		ambiencePreviousFrameReady = false;
+		ambiencePreviousFrameWidth = 0;
+		ambiencePreviousFrameHeight = 0;
+		if (ambiencePreviousFrameFramebuffer != null) {
+			ambiencePreviousFrameFramebuffer.destroy();
+			ambiencePreviousFrameFramebuffer = null;
+		}
+		if (ambiencePreviousFrameTexture != 0) {
+			GlStateManager._deleteTexture(ambiencePreviousFrameTexture);
+			ambiencePreviousFrameTexture = 0;
+		}
 	}
 
 	@Override
@@ -1224,13 +1975,37 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		prepareRenderer.destroy();
 		compositeRenderer.destroy();
 		deferredRenderer.destroy();
+		if (voxyEntityDepthClear != null) {
+			voxyEntityDepthClear.destroy();
+		}
 		finalPassRenderer.destroy();
 		centerDepthSampler.destroy();
 		customTextureManager.destroy();
 		whitePixel.close();
-		biggerWhitePixel.close();
 
 		horizonRenderer.destroy();
+
+		if (wynncraftBiomeFogRenderer != null) {
+			wynncraftBiomeFogRenderer.destroy();
+			wynncraftBiomeFogRenderer = null;
+		}
+		if (wynncraftSkyboxRenderer != null) {
+			wynncraftSkyboxRenderer.destroy();
+			wynncraftSkyboxRenderer = null;
+		}
+		if (wynncraftTransitionRenderer != null) {
+			wynncraftTransitionRenderer.destroy();
+			wynncraftTransitionRenderer = null;
+		}
+		destroyAmbiencePreviousFrameResources();
+		// Clear fog override on pipeline destroy (prevents cross-world ghosting)
+		skyboxFogColor = null;
+		skyboxFogBlendFactor = 0.0f;
+		displayedSkyboxId = 0;
+		skyboxFadeOpacity = 0.0f;
+		recentSkyboxId = 0;
+		recentSkyboxExpiryMs = 0;
+		lastSkyboxFrameMs = 0;
 
 		GlStateManager._glBindFramebuffer(GL30C.GL_READ_FRAMEBUFFER, 0);
 		GlStateManager._glBindFramebuffer(GL30C.GL_DRAW_FRAMEBUFFER, 0);
@@ -1241,6 +2016,7 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 		clearImages.forEach(ImageClearPass::destroy);
 		customImages.forEach(GlImage::destroy);
+		releaseAmbienceCustomImageRefs();
 
 		if (shadowRenderTargets != null) {
 			shadowRenderTargets.destroy();
@@ -1253,11 +2029,26 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 		if (shaderStorageBufferHolder != null) {
 			shaderStorageBufferHolder.destroyBuffers();
 		}
+		if (ambiencePoolAllocation != null) {
+			ambiencePoolAllocation.close();
+		}
+	}
+
+	private void releaseAmbienceCustomImageRefs() {
+		for (AmbienceRenderTargetPool.ResourceRef ref : ambienceCustomImageRefs) {
+			ref.close();
+		}
+		ambienceCustomImageRefs.clear();
 	}
 
 	@Override
 	public boolean shouldOverrideShaders() {
 		return isRenderingWorld && isMainBound;
+	}
+
+	@Override
+	public SodiumPrograms getSodiumPrograms() {
+		return sodiumPrograms;
 	}
 
 	@Override
@@ -1277,10 +2068,6 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 
 	public AbstractTexture getWhitePixel() {
 		return whitePixel;
-	}
-
-	public AbstractTexture getBiggerWhitePixel() {
-		return biggerWhitePixel;
 	}
 
 	@Override
@@ -1304,6 +2091,15 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 			// NB: The alpha value must be 1.0 here, or else you will get a bunch of bugs. Sildur's Vibrant Shaders
 			//     will give you pink reflections and other weirdness if this is zero.
 			Vector4f fogColor = new Vector4f((float) fogColor3.x, (float) fogColor3.y, (float) fogColor3.z, 1.0F);
+
+			// Override horizon fog color when Wynncraft skybox is active.
+			// This makes the GBuffer sky match our skybox mood, affecting pack reflections.
+			if (skyboxFogColor != null && skyboxFogBlendFactor > 0.001f) {
+				float b = skyboxFogBlendFactor;
+				fogColor.x = fogColor.x * (1 - b) + skyboxFogColor[0] * b;
+				fogColor.y = fogColor.y * (1 - b) + skyboxFogColor[1] * b;
+				fogColor.z = fogColor.z * (1 - b) + skyboxFogColor[2] * b;
+			}
 
 			horizonRenderer.renderHorizon(CapturedRenderingState.INSTANCE.getGbufferModelView(), CapturedRenderingState.INSTANCE.getGbufferProjection(), fogColor);
 		}
@@ -1340,8 +2136,11 @@ public class IrisRenderingPipeline implements WorldRenderingPipeline, ShaderRend
 	}
 
 	public GlFramebuffer createDHFramebuffer(ProgramSource sources, boolean trans) {
-		return renderTargets.createDHFramebuffer(trans ? flippedAfterTranslucent : flippedAfterPrepare,
-			sources.getDirectives().getDrawBuffers());
+		ImmutableSet<Integer> flipped = trans ? flippedAfterTranslucent : flippedAfterPrepare;
+		int[] drawBuffers = sources.getDirectives().getDrawBuffers();
+		GlFramebuffer framebuffer = renderTargets.createDHFramebuffer(flipped, drawBuffers);
+		trackDHFramebuffer(framebuffer, flipped, drawBuffers);
+		return framebuffer;
 	}
 
 	public ImmutableSet<Integer> getFlippedBeforeShadow() {

@@ -22,7 +22,8 @@ public class ModelToEntityVertexSerializer implements VertexSerializer {
 		final int quadCount = vertexCount >> 2; // divide by 4
 
 		final short entity = (short) CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
-		final short blockEntity = (short) CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
+		// WynnIris: carry the glint render flags alongside the block entity id.
+		final short blockEntity = (short) CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntityWithRenderFlags();
 		final short item = (short) CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
 
 		long src = srcBase;

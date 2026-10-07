@@ -30,7 +30,9 @@ public class MixinCustomFeatureRenderer {
 	@Inject(method = "buildGroup", at = @At("RETURN"))
 	private void iris$unset(FeatureFrameContext context, List<BlockModelFeatureRenderer.Submit> submits, CallbackInfo ci) {
 		CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemInHand(false);
 		CapturedRenderingState.INSTANCE.setCurrentEntity(0);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemSkipsItemTint(false);
 		CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
 	}
 }

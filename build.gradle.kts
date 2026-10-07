@@ -16,8 +16,12 @@ val SODIUM_DEPENDENCY_NEO by extra { "net.caffeinemc:sodium-neoforge-mod:0.9.2+m
 // TODO: Re-add Parchment
 val PARCHMENT_VERSION by extra { null }
 
-// https://semver.org/
-val MOD_VERSION by extra { "1.11.6" }
+// WynnIris versioning: IRIS_BASE_VERSION is the upstream Iris version we forked from.
+// It's used as the mod version so Fabric/Sodium compatibility checks pass.
+// WYNNIRIS_VERSION is our own release counter, used in the jar filename only.
+val WYNNIRIS_VERSION by extra { "1.2.2" }
+val IRIS_BASE_VERSION by extra { "1.11.6" }
+val MOD_VERSION by extra { IRIS_BASE_VERSION }
 
 allprojects {
     apply(plugin = "java")
@@ -38,39 +42,23 @@ subprojects {
     java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 
-    fun createVersionString(): String {
-        val builder = StringBuilder()
+    // Mod metadata version — must look like a real Iris version for Sodium compatibility
+    fun modVersionString(): String = "${MOD_VERSION}+mc${MINECRAFT_VERSION}"
 
+    // User-facing jar filename version
+    fun archiveVersionString(): String {
         val isReleaseBuild = project.hasProperty("build.release")
-        val buildId = System.getenv("GITHUB_RUN_NUMBER")
-
-        if (isReleaseBuild) {
-            builder.append(MOD_VERSION)
-        } else {
-            builder.append(MOD_VERSION.substringBefore('-'))
-            builder.append("-snapshot")
-        }
-
-        builder.append("+mc").append(MINECRAFT_VERSION)
-
-        if (!isReleaseBuild) {
-            if (buildId != null) {
-                builder.append("-build.${buildId}")
-            } else {
-                builder.append("-local")
-            }
-        }
-
-        return builder.toString()
+        val suffix = if (isReleaseBuild) "" else "-dev"
+        return "${WYNNIRIS_VERSION}${suffix}+mc${MINECRAFT_VERSION}"
     }
 
     tasks.processResources {
         filesMatching("META-INF/neoforge.mods.toml") {
-            expand(mapOf("version" to createVersionString()))
+            expand(mapOf("version" to modVersionString()))
         }
     }
 
-    version = createVersionString()
+    version = modVersionString()
     group = "net.irisshaders"
 
     tasks.withType<JavaCompile> {

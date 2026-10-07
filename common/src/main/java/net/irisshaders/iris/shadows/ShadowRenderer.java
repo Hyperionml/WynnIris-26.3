@@ -19,6 +19,7 @@ import net.caffeinemc.mods.sodium.client.world.LevelRendererExtension;
 import net.caffeinemc.mods.sodium.mixin.core.render.world.FrustumAccessor;
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.compat.dh.DHCompat;
+import net.irisshaders.iris.compat.general.WynntilsCompat;
 import net.irisshaders.iris.gl.GLDebug;
 import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gui.option.IrisVideoSettings;
@@ -75,6 +76,7 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.ARBTextureSwizzle;
+import org.lwjgl.opengl.GL11C;
 import org.lwjgl.opengl.GL20C;
 import org.lwjgl.opengl.GL30C;
 
@@ -102,6 +104,7 @@ public class ShadowRenderer {
 	private final int resolution;
 	private final float intervalSize;
 	private final Float fov;
+	private final PackShadowDirectives shadowDirectives;
 	private final ShadowRenderTargets targets;
 	private final ShadowCullState packCullingState;
 	private final ShadowCompositeRenderer compositeRenderer;
@@ -136,6 +139,7 @@ public class ShadowRenderer {
 		this.separateHardwareSamplers = separateHardwareSamplers;
 
 		final PackShadowDirectives shadowDirectives = directives.getShadowDirectives();
+		this.shadowDirectives = shadowDirectives;
 
 		this.halfPlaneLength = shadowDirectives.getDistance();
 		this.nearPlane = shadowDirectives.getNearPlane();
@@ -184,6 +188,11 @@ public class ShadowRenderer {
 		levelRenderState = new LevelRenderState();
 		submitNodeStorage = new SubmitNodeStorage();
 		featureRenderDispatcher = new FeatureRenderDispatcher(buffers, Minecraft.getInstance().getModelManager(), Minecraft.getInstance().getAtlasManager(), Minecraft.getInstance().font, Minecraft.getInstance().gameRenderer.gameRenderState());
+	}
+
+	public void refreshSamplingSettings() {
+		mipmapPasses.clear();
+		configureSamplingSettings(shadowDirectives);
 	}
 
 	public static PoseStack createShadowModelView(float sunPathRotation, float intervalSize, float nearPlane, float farPlane) {
@@ -258,6 +267,8 @@ public class ShadowRenderer {
 			// We have to do this or else shadow hardware filtering breaks entirely!
 			IrisRenderSystem.texParameteri(glTextureId, GL20C.GL_TEXTURE_2D, GL20C.GL_TEXTURE_COMPARE_MODE, GL30C.GL_COMPARE_REF_TO_TEXTURE);
 			IrisRenderSystem.texParameteri(glTextureId, GL20C.GL_TEXTURE_2D, GL20C.GL_TEXTURE_COMPARE_FUNC, GL20C.GL_GEQUAL);
+		} else {
+			IrisRenderSystem.texParameteri(glTextureId, GL20C.GL_TEXTURE_2D, GL20C.GL_TEXTURE_COMPARE_MODE, GL11C.GL_NONE);
 		}
 
 		// Workaround for issues with old shader packs like Chocapic v4.
@@ -725,6 +736,11 @@ public class ShadowRenderer {
 
 		for(Entity entity : Minecraft.getInstance().level.entitiesForRendering()) {
 			if (entity instanceof AbstractClientPlayer acp && acp.isSpectator()) continue;
+
+			// WynnIris: don't cast a shadow for entities Wynntils has hidden from rendering
+			// (e.g. disabled beacons). Wynntils gates these out of the main entity pass, but the
+			// shadow pass renders entities through its own path that never hits that gate.
+			if (WynntilsCompat.isHiddenByWynntils(entity)) continue;
 
 			if (Minecraft.getInstance().getEntityRenderDispatcher().shouldRender(entity, frustum, d, e, f, levelRenderState.worldPartialTicks) || entity.hasIndirectPassenger(Minecraft.getInstance().player)) {
 				BlockPos blockPos = entity.blockPosition();

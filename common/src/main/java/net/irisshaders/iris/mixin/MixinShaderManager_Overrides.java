@@ -23,6 +23,7 @@ import net.irisshaders.iris.pipeline.WorldRenderingPhase;
 import net.irisshaders.iris.pipeline.WorldRenderingPipeline;
 import net.irisshaders.iris.pipeline.programs.ShaderAccess;
 import net.irisshaders.iris.pipeline.programs.ShaderKey;
+import net.irisshaders.iris.shaderpack.loading.ProgramId;
 import net.irisshaders.iris.pipeline.programs.ShaderOverrides;
 import net.irisshaders.iris.platform.IrisPlatformHelpers;
 import net.irisshaders.iris.shadows.ShadowRenderingState;
@@ -62,6 +63,11 @@ import static net.irisshaders.iris.pipeline.programs.ShaderOverrides.isBlockEnti
 public abstract class MixinShaderManager_Overrides {
 	@Unique
 	private static Set<RenderPipeline> missingShaders = new HashSet<>();
+	// WynnIris: auto-detect a sensible shader for RenderPipelines added by other mods.
+	@Unique
+	private static final Set<RenderPipeline> autoDetectedShaders = new HashSet<>();
+	@Unique
+	private static final Map<Map.Entry<RenderPipeline, ProgramId>, ShaderKey> autoDetectCache = new HashMap<>();
 	@Unique
 	private static final Map<CompiledRenderPipeline, Map<GlProgram, Map<List<VertexFormat>, FrontendRenderPipeline>>> iris$overrides = new IdentityHashMap<>();
 
@@ -75,7 +81,7 @@ public abstract class MixinShaderManager_Overrides {
 		if (pipeline instanceof IrisRenderingPipeline irisPipeline && irisPipeline.shouldOverrideShaders() && !ImmediateState.bypass) {
 			RenderPipeline newProgram = renderPipeline;
 
-			ShaderKey shaderKey = IrisPipelines.getPipeline(irisPipeline, newProgram);
+			ShaderKey shaderKey = iris$selectShaderKey(irisPipeline, newProgram);
 			GlProgram program = shaderKey == null ? null : irisPipeline.getShaderMap().getShader(shaderKey);
 
 			var oldProgram = (GlRenderPipeline) ((FrontendRenderPipeline) cir.getReturnValue()).backendRenderPipeline();
@@ -157,5 +163,75 @@ public abstract class MixinShaderManager_Overrides {
 
 		((ShaderInstanceInterface) p).setShouldSkip(shouldSkip);
 	}*/
+
+	@Unique
+	private static ShaderKey iris$selectShaderKey(IrisRenderingPipeline pipeline, RenderPipeline shaderProgram) {
+		ShaderKey shaderKey;
+		if (ImmediateState.drawingDeferredWynncraftVfx
+			&& pipeline.shouldUseWynncraftFallbackVfxTranslucency()
+			&& ImmediateState.isWynncraftVfxCandidatePipeline(shaderProgram)) {
+			shaderKey = ShaderKey.WYNNCRAFT_VFX_TRANSLUCENT;
+		} else {
+			shaderKey = IrisPipelines.getPipeline(pipeline, shaderProgram);
+		}
+
+		if (shaderKey == null) {
+			shaderKey = iris$autoDetectAndCache(pipeline, shaderProgram);
+		}
+
+		return shaderKey;
+	}
+
+	@Unique
+	private static ShaderKey iris$autoDetectAndCache(IrisRenderingPipeline pipeline, RenderPipeline renderPipeline) {
+		if (renderPipeline.getLocation().getNamespace().equals("minecraft")) {
+			return null;
+		}
+
+		boolean isShadow = ShadowRenderingState.areShadowsCurrentlyBeingRendered();
+		ProgramId programId = isShadow
+			? ShaderOverrides.detectShadowProgramId(pipeline)
+			: ShaderOverrides.detectProgramId(pipeline);
+
+		if (programId == null) {
+			return null;
+		}
+
+		Map.Entry<RenderPipeline, ProgramId> cacheKey = Map.entry(renderPipeline, programId);
+		ShaderKey cached = autoDetectCache.get(cacheKey);
+		if (cached != null) {
+			return cached;
+		}
+
+		ShaderKey match = ShaderKey.findBestMatch(renderPipeline, programId);
+		if (match == null) {
+			return null;
+		}
+
+		autoDetectCache.put(cacheKey, match);
+
+		IrisPipelines.autoAssignPipeline(renderPipeline,
+			p -> {
+				IrisRenderingPipeline irp = (IrisRenderingPipeline) p;
+				ProgramId pid = ShaderOverrides.detectProgramId(irp);
+				if (pid == null) return null;
+				return autoDetectCache.computeIfAbsent(Map.entry(renderPipeline, pid),
+					k -> ShaderKey.findBestMatch(renderPipeline, pid));
+			},
+			p -> {
+				IrisRenderingPipeline irp = (IrisRenderingPipeline) p;
+				ProgramId pid = ShaderOverrides.detectShadowProgramId(irp);
+				if (pid == null) return null;
+				return autoDetectCache.computeIfAbsent(Map.entry(renderPipeline, pid),
+					k -> ShaderKey.findBestMatch(renderPipeline, pid));
+			}
+		);
+
+		if (autoDetectedShaders.add(renderPipeline)) {
+			Iris.logger.info("Auto-detected shader for mod pipeline " + renderPipeline.getLocation());
+		}
+
+		return match;
+	}
 
 }

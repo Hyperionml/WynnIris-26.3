@@ -12,6 +12,7 @@ val FABRIC_LOADER_VERSION: String by rootProject.extra
 val FABRIC_API_VERSION: String by rootProject.extra
 val SODIUM_DEPENDENCY_FABRIC: Any by rootProject.extra
 val MOD_VERSION: String by rootProject.extra
+val WYNNIRIS_VERSION: String by rootProject.extra
 
 repositories {
     mavenLocal()
@@ -34,7 +35,15 @@ repositories {
 }
 
 base {
-    archivesName.set("iris-fabric")
+    archivesName.set("WynnIris")
+}
+
+tasks.named<org.gradle.jvm.tasks.Jar>("remapJar") {
+    archiveVersion.set(
+        if (project.hasProperty("build.release")) "${WYNNIRIS_VERSION}+${MINECRAFT_VERSION}-fabric"
+        else "${WYNNIRIS_VERSION}-experimental+${MINECRAFT_VERSION}-fabric"
+    )
+    archiveClassifier.set("")
 }
 
 dependencies {
@@ -137,3 +146,9 @@ tasks {
 
     jar.get().destinationDirectory = rootDir.resolve("build").resolve("libs")
 }
+
+// NOTE (26.3 port): Modrinth/CurseForge publishing blocks were dropped.
+// They relied on `com.modrinth.minotaur` + `net.darkhax.curseforgegradle` plugins
+// and on the `remapJar` task, which does not exist under the non-remapping Loom
+// used by MC 26.x. Re-add publishing once the port compiles.
+

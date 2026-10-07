@@ -16,6 +16,7 @@ import net.caffeinemc.mods.sodium.client.gui.options.control.ControlValueFormatt
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.features.FeatureFlags;
 import net.irisshaders.iris.gui.option.IrisVideoSettings;
+import net.irisshaders.iris.gui.screen.AmbiencePackScreen;
 import net.irisshaders.iris.gui.screen.ShaderPackScreen;
 import net.irisshaders.iris.mixin.GpuDeviceAccessor;
 import net.irisshaders.iris.mixin.IrisMixinPlugin;
@@ -40,7 +41,7 @@ public class IrisConfig implements ConfigEntryPoint {
         boolean vk = IrisMixinPlugin.usingVulkan;
 
         var modOptions = builder.registerOwnModOptions()
-                .setName("Iris")
+                .setName(Iris.MODNAME)
                 .setIcon(MONO)
                 .setColorTheme(builder.createColorTheme().setBaseThemeRGB(0xFFf556e2))
                 .setVersion(Iris.getVersionSimple())
@@ -52,6 +53,13 @@ public class IrisConfig implements ConfigEntryPoint {
                 );
 
         if (!vk) {
+            // WynnIris: ambience pack selection screen
+            modOptions.addPage(
+                    builder.createExternalPage()
+                            .setName(Component.translatable("options.iris.wynncraftAmbiencePackSelection.title"))
+                            .setScreenConsumer(i ->
+                                    Minecraft.getInstance().gui.setScreen(new AmbiencePackScreen(i)))
+            );
             modOptions.addPage(createSettingsPage(builder));
 
             modOptions
@@ -125,7 +133,7 @@ public class IrisConfig implements ConfigEntryPoint {
     }
 
     private PageBuilder createSettingsPage(ConfigBuilder builder) {
-        return builder.createOptionPage()
+        var page = builder.createOptionPage()
                 .setName(Component.literal("Settings"))
                 .addOptionGroup(
                         builder.createOptionGroup()
@@ -143,6 +151,206 @@ public class IrisConfig implements ConfigEntryPoint {
                                 .addOption(createColorSpaceOption(builder))
                                 .addOption(createShadowDistanceOption(builder))
                 );
+
+        // ---- WynnIris: glint / tint brightness ----
+        page.addOptionGroup(
+                builder.createOptionGroup()
+                        .addOption(builder.createIntegerOption(Identifier.fromNamespaceAndPath("iris", "glint_brightness"))
+                                .setDefaultValue(110)
+                                .setBinding(value -> IrisVideoSettings.glintBrightness = value, () -> IrisVideoSettings.glintBrightness)
+                                .setName(Component.translatable("options.iris.glintBrightness"))
+                                .setTooltip(Component.translatable("options.iris.glintBrightness.tooltip"))
+                                .setValueFormatter(ControlValueFormatterImpls.percentage())
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setRange(new Range(50, 200, 5))
+                                .setImpact(OptionImpact.LOW)
+                        )
+                        .addOption(builder.createIntegerOption(Identifier.fromNamespaceAndPath("iris", "tint_brightness"))
+                                .setDefaultValue(75)
+                                .setBinding(value -> IrisVideoSettings.tintBrightness = value, () -> IrisVideoSettings.tintBrightness)
+                                .setName(Component.translatable("options.iris.tintBrightness"))
+                                .setTooltip(Component.translatable("options.iris.tintBrightness.tooltip"))
+                                .setValueFormatter(ControlValueFormatterImpls.percentage())
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setRange(new Range(25, 150, 5))
+                                .setImpact(OptionImpact.LOW)
+                        )
+        );
+
+        // ---- WynnIris: text display brightness ----
+        page.addOptionGroup(
+                builder.createOptionGroup()
+                        .addOption(builder.createBooleanOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_text_brightness_floor"))
+                                .setDefaultValue(false)
+                                .setBinding(value -> IrisVideoSettings.wynncraftTextBrightnessFloor = value, () -> IrisVideoSettings.wynncraftTextBrightnessFloor)
+                                .setName(Component.translatable("options.iris.wynncraftTextBrightnessFloor"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftTextBrightnessFloor.tooltip"))
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setImpact(OptionImpact.LOW)
+                        )
+                        .addOption(builder.createIntegerOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_text_brightness_floor_level"))
+                                .setDefaultValue(10)
+                                .setBinding(value -> IrisVideoSettings.wynncraftTextBrightnessFloorLevel = value, () -> IrisVideoSettings.wynncraftTextBrightnessFloorLevel)
+                                .setName(Component.translatable("options.iris.wynncraftTextBrightnessFloorLevel"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftTextBrightnessFloorLevel.tooltip"))
+                                .setValueFormatter(i -> Component.translatable("options.iris.wynncraftTextBrightnessFloorLevel.value", i))
+                                .setEnabledProvider(i -> IrisVideoSettings.wynncraftTextBrightnessFloor, ConfigState.UPDATE_ON_REBUILD)
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setRange(new Range(0, 15, 1))
+                                .setImpact(OptionImpact.LOW)
+                        )
+        );
+
+        // ---- WynnIris: skybox / entity lighting ----
+        page.addOptionGroup(
+                builder.createOptionGroup()
+                        .addOption(builder.createIntegerOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_scene_darkening"))
+                                .setDefaultValue(100)
+                                .setBinding(value -> IrisVideoSettings.wynncraftSceneDarkening = value, () -> IrisVideoSettings.wynncraftSceneDarkening)
+                                .setName(Component.translatable("options.iris.wynncraftSceneDarkening"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftSceneDarkening.tooltip"))
+                                .setValueFormatter(ControlValueFormatterImpls.percentage())
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setRange(new Range(0, 100, 5))
+                                .setImpact(OptionImpact.LOW)
+                        )
+                        .addOption(builder.createIntegerOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_entity_brightness"))
+                                .setDefaultValue(100)
+                                .setBinding(value -> IrisVideoSettings.wynncraftEntityBrightness = value, () -> IrisVideoSettings.wynncraftEntityBrightness)
+                                .setName(Component.translatable("options.iris.wynncraftEntityBrightness"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftEntityBrightness.tooltip"))
+                                .setValueFormatter(ControlValueFormatterImpls.percentage())
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setRange(new Range(0, 200, 5))
+                                .setImpact(OptionImpact.LOW)
+                        )
+                        .addOption(builder.createIntegerOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_entity_emissivity"))
+                                .setDefaultValue(100)
+                                .setBinding(value -> IrisVideoSettings.wynncraftEntityEmissivity = value, () -> IrisVideoSettings.wynncraftEntityEmissivity)
+                                .setName(Component.translatable("options.iris.wynncraftEntityEmissivity"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftEntityEmissivity.tooltip"))
+                                .setValueFormatter(ControlValueFormatterImpls.percentage())
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setRange(new Range(0, 100, 5))
+                                .setImpact(OptionImpact.LOW)
+                        )
+                        .addOption(builder.createBooleanOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_night_vision_disables_boost"))
+                                .setDefaultValue(true)
+                                .setBinding(value -> IrisVideoSettings.wynncraftNightVisionDisablesBoost = value, () -> IrisVideoSettings.wynncraftNightVisionDisablesBoost)
+                                .setName(Component.translatable("options.iris.wynncraftNightVisionDisablesBoost"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftNightVisionDisablesBoost.tooltip"))
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setImpact(OptionImpact.LOW)
+                        )
+        );
+
+        // ---- WynnIris: Mist Woods biome fog ----
+        page.addOptionGroup(
+                builder.createOptionGroup()
+                        .addOption(builder.createBooleanOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_mist_woods_fog"))
+                                .setDefaultValue(true)
+                                .setBinding(value -> IrisVideoSettings.wynncraftMistWoodsFog = value, () -> IrisVideoSettings.wynncraftMistWoodsFog)
+                                .setName(Component.translatable("options.iris.wynncraftMistWoodsFog"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftMistWoodsFog.tooltip"))
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setImpact(OptionImpact.LOW)
+                        )
+                        .addOption(builder.createIntegerOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_mist_woods_fog_density"))
+                                .setDefaultValue(100)
+                                .setBinding(value -> IrisVideoSettings.wynncraftMistWoodsFogDensity = value, () -> IrisVideoSettings.wynncraftMistWoodsFogDensity)
+                                .setName(Component.translatable("options.iris.wynncraftMistWoodsFogDensity"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftMistWoodsFogDensity.tooltip"))
+                                .setValueFormatter(ControlValueFormatterImpls.percentage())
+                                .setEnabledProvider(i -> IrisVideoSettings.wynncraftMistWoodsFog, ConfigState.UPDATE_ON_REBUILD)
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setRange(new Range(0, 100, 5))
+                                .setImpact(OptionImpact.LOW)
+                        )
+                        .addOption(builder.createIntegerOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_mist_woods_fog_min_distance"))
+                                .setDefaultValue(0)
+                                .setBinding(value -> IrisVideoSettings.wynncraftMistWoodsFogMinDistance = value, () -> IrisVideoSettings.wynncraftMistWoodsFogMinDistance)
+                                .setName(Component.translatable("options.iris.wynncraftMistWoodsFogMinDistance"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftMistWoodsFogMinDistance.tooltip"))
+                                .setValueFormatter(i -> i == 0
+                                        ? Component.translatable("options.iris.wynncraftMistWoodsFogMinDistance.default")
+                                        : Component.translatable("options.iris.wynncraftMistWoodsFogMinDistance.blocks", i))
+                                .setEnabledProvider(i -> IrisVideoSettings.wynncraftMistWoodsFog, ConfigState.UPDATE_ON_REBUILD)
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setRange(new Range(0, 300, 10))
+                                .setImpact(OptionImpact.LOW)
+                        )
+                        .addOption(builder.createBooleanOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_mist_woods_fog_sun_tint_reduction"))
+                                .setDefaultValue(false)
+                                .setBinding(value -> IrisVideoSettings.wynncraftMistWoodsFogSunTintReduction = value, () -> IrisVideoSettings.wynncraftMistWoodsFogSunTintReduction)
+                                .setName(Component.translatable("options.iris.wynncraftMistWoodsFogSunTintReduction"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftMistWoodsFogSunTintReduction.tooltip"))
+                                .setEnabledProvider(i -> IrisVideoSettings.wynncraftMistWoodsFog, ConfigState.UPDATE_ON_REBUILD)
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setImpact(OptionImpact.LOW)
+                        )
+                        .addOption(builder.createIntegerOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_mist_woods_fog_sun_tint_amount"))
+                                .setDefaultValue(50)
+                                .setBinding(value -> IrisVideoSettings.wynncraftMistWoodsFogSunTintAmount = value, () -> IrisVideoSettings.wynncraftMistWoodsFogSunTintAmount)
+                                .setName(Component.translatable("options.iris.wynncraftMistWoodsFogSunTintAmount"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftMistWoodsFogSunTintAmount.tooltip"))
+                                .setValueFormatter(ControlValueFormatterImpls.percentage())
+                                .setEnabledProvider(i -> IrisVideoSettings.wynncraftMistWoodsFog && IrisVideoSettings.wynncraftMistWoodsFogSunTintReduction, ConfigState.UPDATE_ON_REBUILD)
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setRange(new Range(0, 100, 5))
+                                .setImpact(OptionImpact.LOW)
+                        )
+        );
+
+        // ---- WynnIris: ambience (region-based shader profile switching) ----
+        page.addOptionGroup(
+                builder.createOptionGroup()
+                        .addOption(builder.createBooleanOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_ambience_enabled"))
+                                .setDefaultValue(false)
+                                .setBinding(value -> IrisVideoSettings.wynncraftAmbienceEnabled = value, () -> IrisVideoSettings.wynncraftAmbienceEnabled)
+                                .setName(Component.translatable("options.iris.wynncraftAmbienceEnabled"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftAmbienceEnabled.tooltip"))
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setImpact(OptionImpact.MEDIUM)
+                        )
+                        .addOption(builder.createBooleanOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_ambience_auto_warm_cache"))
+                                .setDefaultValue(true)
+                                .setBinding(value -> IrisVideoSettings.wynncraftAmbienceAutoWarmCache = value, () -> IrisVideoSettings.wynncraftAmbienceAutoWarmCache)
+                                .setName(Component.translatable("options.iris.wynncraftAmbienceAutoWarmCache"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftAmbienceAutoWarmCache.tooltip"))
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setImpact(OptionImpact.HIGH)
+                        )
+        );
+
+        // ---- WynnIris: mount armor overlay ----
+        page.addOptionGroup(
+                builder.createOptionGroup()
+                        .addOption(builder.createBooleanOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_mount_armor_overlay"))
+                                .setDefaultValue(false)
+                                .setBinding(value -> IrisVideoSettings.wynncraftMountArmorOverlay = value, () -> IrisVideoSettings.wynncraftMountArmorOverlay)
+                                .setName(Component.translatable("options.iris.wynncraftMountArmorOverlay"))
+                                .setTooltip(Component.translatable("options.iris.wynncraftMountArmorOverlay.tooltip"))
+                                .setStorageHandler(IrisConfig::saveConfig)
+                                .setImpact(OptionImpact.MEDIUM)
+                        )
+        );
+
+        // ---- WynnIris: debug logging (experimental builds only) ----
+        if (net.irisshaders.iris.BuildConfig.WYNNIRIS_EXPERIMENTAL) {
+            page.addOptionGroup(
+                    builder.createOptionGroup()
+                            .addOption(builder.createBooleanOption(Identifier.fromNamespaceAndPath("iris", "wynncraft_debug_logging"))
+                                    .setDefaultValue(false)
+                                    .setBinding(value -> IrisVideoSettings.wynncraftDebugLogging = value, () -> IrisVideoSettings.wynncraftDebugLogging)
+                                    .setName(Component.translatable("options.iris.wynncraftDebugLogging"))
+                                    .setTooltip(Component.translatable("options.iris.wynncraftDebugLogging.tooltip"))
+                                    .setStorageHandler(IrisConfig::saveConfig)
+                                    .setImpact(OptionImpact.LOW)
+                            )
+            );
+        }
+
+        return page;
     }
 
     private OptionBuilder createColorSpaceOption(ConfigBuilder builder) {

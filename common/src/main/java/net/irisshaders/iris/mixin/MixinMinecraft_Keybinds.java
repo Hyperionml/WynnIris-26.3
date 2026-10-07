@@ -1,7 +1,8 @@
 package net.irisshaders.iris.mixin;
 
 import net.irisshaders.iris.Iris;
-import net.irisshaders.iris.IrisVKOnly;
+import net.irisshaders.iris.ambience.AmbienceRuntime;
+import net.irisshaders.iris.pathways.WynncraftMountArmorOverlay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.profiling.Profiler;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -25,6 +26,8 @@ public class MixinMinecraft_Keybinds {
 		Profiler.get().push("iris_keybinds");
 
 		Iris.handleKeybinds((Minecraft) (Object) this);
+		AmbienceRuntime.onClientTick((Minecraft) (Object) this);
+		WynncraftMountArmorOverlay.onClientTick((Minecraft) (Object) this);
 
 		Profiler.get().pop();
 	}

@@ -1,7 +1,8 @@
 package net.irisshaders.iris.pipeline;
 
-import com.mojang.renderpearl.backend.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import net.irisshaders.iris.Iris;
+import net.irisshaders.iris.gui.option.WynncraftDebugLog;
 import net.irisshaders.iris.shaderpack.materialmap.NamespacedId;
 import net.irisshaders.iris.shaderpack.materialmap.WorldRenderingSettings;
 import net.irisshaders.iris.uniforms.SystemTimeUniforms;
@@ -33,9 +34,20 @@ public class PipelineManager {
 			pipeline = pipelineFactory.apply(currentDimension);
 			pipelinesPerDimension.put(currentDimension, pipeline);
 
+			// A surviving Voxy world engine (e.g. Wynncraft world switch: level
+			// unloads but Voxy's engine persists) still holds bindings into the
+			// PREVIOUS pipeline's destroyed RenderTargets. Rebind it before the
+			// first terrain frame renders with the new pipeline.
+			Iris.onShaderPipelineCreated(pipeline);
+
 			if (WorldRenderingSettings.INSTANCE.isReloadRequired()) {
-				if (Minecraft.getInstance().levelExtractor != null) {
-					Minecraft.getInstance().levelExtractor.allChanged();
+				if (WynncraftDebugLog.shouldLog("world-settings-reload")) {
+					WynncraftDebugLog.info("world-settings-reload",
+						"World rendering reload required after pipeline creation: dimension={} reasons={}",
+						currentDimension, WorldRenderingSettings.INSTANCE.getReloadReasonSummary());
+				}
+				if (Minecraft.getInstance().levelRenderer != null) {
+					Minecraft.getInstance().levelRenderer.allChanged();
 				}
 
 				WorldRenderingSettings.INSTANCE.clearReloadRequired();

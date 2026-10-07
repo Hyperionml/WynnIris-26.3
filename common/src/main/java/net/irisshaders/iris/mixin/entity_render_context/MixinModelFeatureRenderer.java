@@ -24,7 +24,9 @@ public class MixinModelFeatureRenderer {
 		((ModelStorage) (Object) submit).iris$set();
 		original.call(submit);
 		CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemInHand(false);
 		CapturedRenderingState.INSTANCE.setCurrentEntity(0);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemSkipsItemTint(false);
 		CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
 	}
 }

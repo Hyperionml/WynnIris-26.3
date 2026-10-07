@@ -8,6 +8,7 @@ import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.pathways.HandRenderer;
 import net.irisshaders.iris.pipeline.programs.ShaderKey;
 import net.irisshaders.iris.shaderpack.loading.ProgramId;
+import net.irisshaders.iris.shaderpack.materialmap.WorldRenderingSettings;
 import net.irisshaders.iris.shadows.ShadowRenderingState;
 import net.minecraft.client.renderer.RenderPipelines;
 import org.jetbrains.annotations.Nullable;
@@ -53,12 +54,13 @@ public class IrisPipelines {
 		assignToMain(RenderPipelines.TRANSLUCENT_PARTICLE, p -> ShaderKey.PARTICLES_TRANS);
 		assignToMain(RenderPipelines.WATER_MASK, p -> ShaderKey.BASIC);
 		assignToMain(RenderPipelines.GLINT, p -> ShaderKey.GLINT);
-		assignToMain(RenderPipelines.ARMOR_CUTOUT_NO_CULL, p -> getCutout(p));
+		assignToMain(RenderPipelines.ARMOR_CUTOUT_NO_CULL, p -> WorldRenderingSettings.INSTANCE.shouldSeparateEntityDraws() ? getTranslucent(p) : getCutout(p));
 		assignToMain(RenderPipelines.ARMOR_CUTOUT_NO_CULL_GLINT, p -> getGlint(ShaderKey.ENTITIES_CUTOUT_GLINT_ARMOR));
 		assignToMain(RenderPipelines.EYES, p -> ShaderKey.ENTITIES_EYES);
 		assignToMain(RenderPipelines.ENTITY_TRANSLUCENT_EMISSIVE, p -> ShaderKey.ENTITIES_EYES_TRANS);
-		assignToMain(RenderPipelines.ARMOR_DECAL_CUTOUT_NO_CULL, p -> getCutout(p));
+		assignToMain(RenderPipelines.ARMOR_DECAL_CUTOUT_NO_CULL, p -> WorldRenderingSettings.INSTANCE.shouldSeparateEntityDraws() ? getTranslucent(p) : getCutout(p));
 		assignToMain(RenderPipelines.WOLF_ARMOR_CRACKS, p -> getCutout(p));
+		assignToMain(RenderPipelines.ARMOR_TRANSLUCENT, p -> getTranslucent(p));
 		assignToMain(RenderPipelines.BREEZE_WIND, p -> getTranslucent(p));
 		assignToMain(RenderPipelines.ENTITY_SOLID, p -> getSolid(p));
 		assignToMain(RenderPipelines.ENTITY_SOLID_Z_OFFSET_FORWARD, p -> getSolid(p));
@@ -250,6 +252,13 @@ public class IrisPipelines {
 		} else {
 			return coreShaderMap.getOrDefault(shader, FAKE_FUNCTION).apply(pipeline);
 		}
+	}
+
+	public static void autoAssignPipeline(RenderPipeline pipeline,
+										   Function<IrisRenderingPipeline, ShaderKey> mainFunc,
+										   Function<IrisRenderingPipeline, ShaderKey> shadowFunc) {
+		coreShaderMap.put(pipeline, mainFunc);
+		coreShaderMapShadow.put(pipeline, shadowFunc);
 	}
 
 	public static void assignPipeline(RenderPipeline pipeline, ShaderKey programId) {

@@ -49,6 +49,7 @@ public class MixinEntityRenderDispatcher {
 	// Inject after MatrixStack#push since at this point we know that most cancellation checks have already passed.
 	@Inject(method = "submit", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER))
 	private <E extends Entity, S extends EntityRenderState> void iris$beginEntityRender(S entity, CameraRenderState cameraRenderState, double d, double e, double f, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, CallbackInfo ci) {
+
 		Object2IntFunction<NamespacedId> entityIds = WorldRenderingSettings.INSTANCE.getEntityIds();
 
 		if (entityIds == null || !ImmediateState.isRenderingLevel) {
@@ -86,5 +87,7 @@ public class MixinEntityRenderDispatcher {
 	private<E extends Entity, S extends EntityRenderState> void iris$endEntityRender(S entityRenderState, CameraRenderState cameraRenderState, double d, double e, double f, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, CallbackInfo ci) {
 		CapturedRenderingState.INSTANCE.setCurrentEntity(0);
 		CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemInHand(false);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemSkipsItemTint(false);
 	}
 }

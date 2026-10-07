@@ -21,7 +21,9 @@ public class MixinItemFeatureRenderer {
 	@Inject(method = "prepareSubmit", at = @At("RETURN"))
 	private void iris$clear(ItemFeatureRenderer.Submit submit, CallbackInfo ci) {
 		CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemInHand(false);
 		CapturedRenderingState.INSTANCE.setCurrentEntity(0);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemSkipsItemTint(false);
 		CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
 	}
 }

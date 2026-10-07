@@ -38,7 +38,9 @@ public class MixinTextFeatureRenderer {
 	@Inject(method = "buildGroup", at = @At("RETURN"))
 	private void iris$clear(FeatureFrameContext context, List<TextFeatureRenderer.Submit> submits, CallbackInfo ci) {
 		CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemInHand(false);
 		CapturedRenderingState.INSTANCE.setCurrentEntity(0);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemSkipsItemTint(false);
 		CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
 		hasBE = false;
 		ImmediateState.isRenderingBEs = false;

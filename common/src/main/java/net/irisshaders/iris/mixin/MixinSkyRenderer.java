@@ -7,6 +7,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.mojang.renderpearl.api.commands.RenderPass;
 import net.irisshaders.iris.Iris;
+import net.irisshaders.iris.gui.option.WynncraftDebugLog;
 import net.irisshaders.iris.layer.OuterWrappedRenderType;
 import net.irisshaders.iris.layer.SetStateShard;
 import net.irisshaders.iris.pipeline.WorldRenderingPhase;
@@ -38,7 +39,9 @@ public class MixinSkyRenderer {
 	                                float rainBrightness,
 	                                PoseStack poseStack,
 	                                CallbackInfo ci) {
-		if (!Iris.getPipelineManager().getPipeline().map(WorldRenderingPipeline::shouldRenderSun).orElse(true)) {
+		WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+		if (pipeline != null && !pipeline.shouldRenderSun()) {
+			iris$logSkyCancellation("sun", pipeline);
 			ci.cancel();
 		}
 	}
@@ -49,7 +52,9 @@ public class MixinSkyRenderer {
 	                                 float rainBrightness,
 	                                 PoseStack poseStack,
 	                                 CallbackInfo ci) {
-		if (!Iris.getPipelineManager().getPipeline().map(WorldRenderingPipeline::shouldRenderMoon).orElse(true)) {
+		WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+		if (pipeline != null && !pipeline.shouldRenderMoon()) {
+			iris$logSkyCancellation("moon", pipeline);
 			ci.cancel();
 		}
 	}
@@ -115,5 +120,17 @@ public class MixinSkyRenderer {
 		if (Iris.getPipelineManager().getPipelineNullable() == null) return;
 
 		Iris.getPipelineManager().getPipelineNullable().setPhase(phase);
+	}
+
+	private static void iris$logSkyCancellation(String body, WorldRenderingPipeline pipeline) {
+		if (!WynncraftDebugLog.shouldLog("ambience-sky-cancel-" + body)) {
+			return;
+		}
+
+		WynncraftDebugLog.info("ambience-sky-cancel-" + body,
+			"Sky renderer cancelled {}: pack={} activeKey={} pipeline={} renderSun={} renderMoon={} renderSkyDisc={} phase={} sunPathRotation={}",
+			body, Iris.getCurrentPackName(), Iris.getActiveTransientShaderPackContextKey(),
+			pipeline.getClass().getSimpleName(), pipeline.shouldRenderSun(), pipeline.shouldRenderMoon(),
+			pipeline.shouldRenderSkyDisc(), pipeline.getPhase(), pipeline.getSunPathRotation());
 	}
 }

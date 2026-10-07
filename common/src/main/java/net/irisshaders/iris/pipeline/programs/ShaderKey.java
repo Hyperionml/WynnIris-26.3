@@ -71,6 +71,8 @@ public enum ShaderKey {
             Patch.VANILLA),
 	ENTITIES_TRANSLUCENT(ProgramId.EntitiesTrans, AlphaTests.ONE_TENTH_ALPHA, IrisVertexFormats.ENTITY, FogMode.PER_VERTEX, LightingModel.DIFFUSE_LM,
             Patch.VANILLA),
+	WYNNCRAFT_VFX_TRANSLUCENT(ProgramId.EntitiesTrans, AlphaTests.ONE_TENTH_ALPHA, IrisVertexFormats.ENTITY, FogMode.PER_VERTEX, LightingModel.DIFFUSE_LM,
+            Patch.VANILLA),
 	ENTITIES_TRANSLUCENT_GLINT(ProgramId.EntitiesTrans, AlphaTests.ONE_TENTH_ALPHA, IrisVertexFormats.ENTITY, FogMode.PER_VERTEX, LightingModel.DIFFUSE_LM,
             Patch.VANILLA),
 	ENTITIES_TRANSLUCENT_GLINT_SPECIAL(ProgramId.EntitiesTrans, AlphaTests.ONE_TENTH_ALPHA, IrisVertexFormats.ENTITY_GLINT_SPECIAL, FogMode.PER_VERTEX, LightingModel.DIFFUSE_LM,

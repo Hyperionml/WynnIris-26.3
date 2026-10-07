@@ -14,6 +14,24 @@ public class IrisVideoSettings {
 	private static final Tooltip ENABLED_TOOLTIP = Tooltip.create(Component.translatable("options.iris.shadowDistance.enabled"));
 	public static int shadowDistance = 32;
 	public static ColorSpace colorSpace = ColorSpace.SRGB;
+	public static int glintBrightness = 110;
+	public static int tintBrightness = 75;
+	public static int wynncraftSceneDarkening = 100;
+	public static int wynncraftEntityBrightness = 100;
+	public static int wynncraftEntityEmissivity = 100;
+	public static boolean wynncraftNightVisionDisablesBoost = true;
+	public static boolean wynncraftTextBrightnessFloor = false;
+	public static int wynncraftTextBrightnessFloorLevel = 10;
+	public static boolean wynncraftMistWoodsFog = true;
+	public static int wynncraftMistWoodsFogDensity = 100;
+	public static int wynncraftMistWoodsFogMinDistance = 0;
+	public static boolean wynncraftMistWoodsFogSunTintReduction = false;
+	public static int wynncraftMistWoodsFogSunTintAmount = 50;
+	public static boolean wynncraftMountArmorOverlay = false;
+	public static boolean wynncraftAmbienceEnabled = false;
+	public static boolean wynncraftAmbienceAutoWarmCache = true;
+	public static String wynncraftSelectedAmbiencePack = "";
+	public static boolean wynncraftDebugLogging = false;
 	public static final OptionInstance<Integer> RENDER_DISTANCE = new ShadowDistanceOption<>("options.iris.shadowDistance",
 		mc -> {
 			WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();

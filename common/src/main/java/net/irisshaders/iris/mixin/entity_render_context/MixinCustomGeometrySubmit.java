@@ -18,6 +18,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinCustomGeometrySubmit implements ModelStorage {
 	@Unique
 	private int entityId, beId, itemId;
+	@Unique
+	private boolean itemInHand;
+	@Unique
+	private boolean skipItemTint;
 
 	@Unique
 	private boolean isRenderingBEs;
@@ -27,6 +31,8 @@ public class MixinCustomGeometrySubmit implements ModelStorage {
 		entityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
 		beId = CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
 		itemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
+		itemInHand = CapturedRenderingState.INSTANCE.isCurrentRenderedItemInHand();
+		skipItemTint = CapturedRenderingState.INSTANCE.currentRenderedItemSkipsItemTint();
 		isRenderingBEs = ImmediateState.isRenderingBEs;
 	}
 
@@ -35,6 +41,8 @@ public class MixinCustomGeometrySubmit implements ModelStorage {
 		CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
 		CapturedRenderingState.INSTANCE.setCurrentBlockEntity(beId);
 		CapturedRenderingState.INSTANCE.setCurrentRenderedItem(itemId);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemInHand(itemInHand);
+		CapturedRenderingState.INSTANCE.setCurrentRenderedItemSkipsItemTint(skipItemTint);
 	}
 
 	@Override

@@ -17,7 +17,7 @@ import net.irisshaders.iris.uniforms.FrameUpdateNotifier;
 import net.irisshaders.iris.uniforms.transforms.SmoothedFloat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -78,7 +78,7 @@ public class AmbienceProfileSettingsScreen extends Screen implements ShaderPackO
 	}
 
 	@Override
-	public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
@@ -139,7 +139,7 @@ public class AmbienceProfileSettingsScreen extends Screen implements ShaderPackO
 			Iris.clearShaderPackOptionQueue();
 		}
 		closeLoadedShaderPack();
-		this.minecraft.setScreen(parent);
+		this.minecraft.gui.setScreen(parent);
 	}
 
 	@Override
@@ -391,7 +391,7 @@ public class AmbienceProfileSettingsScreen extends Screen implements ShaderPackO
 		}
 	}
 
-	private void drawCenteredTruncated(GuiGraphics guiGraphics, Component component, int y, int color) {
+	private void drawCenteredTruncated(GuiGraphicsExtractor guiGraphics, Component component, int y, int color) {
 		Component rendered = component;
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());

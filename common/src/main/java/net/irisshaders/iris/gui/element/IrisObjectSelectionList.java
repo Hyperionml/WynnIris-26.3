@@ -1,7 +1,7 @@
 package net.irisshaders.iris.gui.element;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 
@@ -22,7 +22,7 @@ public class IrisObjectSelectionList<E extends AbstractSelectionList.Entry<E>> e
 	}
 
 	@Override
-	protected void renderSelection(GuiGraphics guiGraphics, E entry, int color) {
+	protected void renderSelection(GuiGraphicsExtractor guiGraphics, E entry, int color) {
 		int x = entry.getContentX() - 2;
 		int y = entry.getContentY() - 2;
 		int right = x + entry.getContentWidth();

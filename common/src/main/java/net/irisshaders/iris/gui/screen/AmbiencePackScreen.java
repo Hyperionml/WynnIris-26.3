@@ -18,7 +18,7 @@ import net.irisshaders.iris.uniforms.FrameUpdateNotifier;
 import net.irisshaders.iris.uniforms.transforms.SmoothedFloat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.ConfirmScreen;
@@ -122,7 +122,7 @@ public class AmbiencePackScreen extends Screen {
 			.bounds(bottomCursor, bottomRowY, bottomButtonWidth, 20)
 			.build());
 		bottomCursor += bottomButtonWidth + rowGap;
-		this.addRenderableWidget(IrisButton.iris$builder(CommonComponents.GUI_DONE, button -> this.minecraft.setScreen(parent), buttonTransition)
+		this.addRenderableWidget(IrisButton.iris$builder(CommonComponents.GUI_DONE, button -> this.minecraft.gui.setScreen(parent), buttonTransition)
 			.bounds(bottomCursor, bottomRowY, bottomButtonWidth, 20)
 			.build());
 
@@ -136,7 +136,7 @@ public class AmbiencePackScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
@@ -162,7 +162,7 @@ public class AmbiencePackScreen extends Screen {
 		importPack(paths.getFirst());
 	}
 
-	private void drawCenteredTruncated(GuiGraphics guiGraphics, Component component, int y, int color) {
+	private void drawCenteredTruncated(GuiGraphicsExtractor guiGraphics, Component component, int y, int color) {
 		Component rendered = component;
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());
@@ -279,14 +279,14 @@ public class AmbiencePackScreen extends Screen {
 		if (packs.isEmpty()) {
 			return;
 		}
-		this.minecraft.setScreen(new AmbienceProfileSelectionScreen(this, selected().pack().id));
+		this.minecraft.gui.setScreen(new AmbienceProfileSelectionScreen(this, selected().pack().id));
 	}
 
 	private void deleteSelectedPack() {
 		if (packs.isEmpty()) return;
 		AmbiencePackManager.LoadedAmbiencePack pack = selected();
-		this.minecraft.setScreen(new ConfirmScreen(confirmed -> {
-			this.minecraft.setScreen(this);
+		this.minecraft.gui.setScreen(new ConfirmScreen(confirmed -> {
+			this.minecraft.gui.setScreen(this);
 			if (confirmed) {
 				try {
 					manager.deletePack(pack.pack().id);
@@ -309,15 +309,15 @@ public class AmbiencePackScreen extends Screen {
 		if (packs.isEmpty()) {
 			return;
 		}
-		this.minecraft.setScreen(new AmbienceRegionEditorScreen(this, selected().pack().id));
+		this.minecraft.gui.setScreen(new AmbienceRegionEditorScreen(this, selected().pack().id));
 	}
 
 	private void openAmbiencePackFolder() {
-		CompletableFuture.runAsync(() -> Util.getPlatform().openUri(manager.getDirectory().toUri()));
+		CompletableFuture.runAsync(() -> com.mojang.blaze3d.Blaze3D.openUri(manager.getDirectory().toUri()));
 	}
 
 	private void createNewPack() {
-		this.minecraft.setScreen(new AmbiencePackMetadataScreen(this));
+		this.minecraft.gui.setScreen(new AmbiencePackMetadataScreen(this));
 	}
 
 	public void onPackCreated(AmbiencePackManager.LoadedAmbiencePack loaded, boolean openAddPreset) {
@@ -331,14 +331,14 @@ public class AmbiencePackScreen extends Screen {
 		status = Component.translatable("options.iris.wynncraftAmbiencePackCreated", loaded.pack().displayName());
 		updateButtons();
 		if (openAddPreset) {
-			this.minecraft.setScreen(new AmbiencePresetCreateScreen(new AmbienceProfileSelectionScreen(this, loaded.pack().id), loaded.pack().id));
+			this.minecraft.gui.setScreen(new AmbiencePresetCreateScreen(new AmbienceProfileSelectionScreen(this, loaded.pack().id), loaded.pack().id));
 		} else {
-			this.minecraft.setScreen(this);
+			this.minecraft.gui.setScreen(this);
 		}
 	}
 
 	private void importPack() {
-		if (Minecraft.getInstance().getWindow().isFullscreen()) {
+		if (Minecraft.getInstance().getWindow().isExclusiveFullscreen()) {
 			status = Component.translatable("options.iris.mustDisableFullscreen").withStyle(ChatFormatting.RED, ChatFormatting.BOLD);
 			return;
 		}
@@ -373,7 +373,7 @@ public class AmbiencePackScreen extends Screen {
 		if (packs.isEmpty()) {
 			return;
 		}
-		if (Minecraft.getInstance().getWindow().isFullscreen()) {
+		if (Minecraft.getInstance().getWindow().isExclusiveFullscreen()) {
 			status = Component.translatable("options.iris.mustDisableFullscreen").withStyle(ChatFormatting.RED, ChatFormatting.BOLD);
 			return;
 		}
@@ -405,8 +405,8 @@ public class AmbiencePackScreen extends Screen {
 
 	private void offerDependencyLinkBeforeExport(Path destination, AmbienceDependency dependency) {
 		String localName = firstLocalName(dependency);
-		this.minecraft.setScreen(new ConfirmScreen(confirmed -> {
-			this.minecraft.setScreen(this);
+		this.minecraft.gui.setScreen(new ConfirmScreen(confirmed -> {
+			this.minecraft.gui.setScreen(this);
 			if (confirmed) {
 				linkDependencyBeforeExport(destination, dependency, localName);
 			} else {
@@ -439,8 +439,8 @@ public class AmbiencePackScreen extends Screen {
 						exportPack(destination);
 						return;
 					}
-					this.minecraft.setScreen(new AmbienceDependencySelectionScreen(this, localName, candidates, chosen -> {
-						this.minecraft.setScreen(this);
+					this.minecraft.gui.setScreen(new AmbienceDependencySelectionScreen(this, localName, candidates, chosen -> {
+						this.minecraft.gui.setScreen(this);
 						if ("modrinth".equalsIgnoreCase(chosen.type)) {
 							saveLinkedDependencyAndContinueExport(destination, dependency.id, chosen);
 						} else {
@@ -460,7 +460,7 @@ public class AmbiencePackScreen extends Screen {
 
 	private void saveLinkedDependencyAndContinueExport(Path destination, String oldDependencyId, AmbienceDependency linked) {
 		try {
-			this.minecraft.setScreen(this);
+			this.minecraft.gui.setScreen(this);
 			manager.replaceDependency(selected().pack().id, oldDependencyId, linked);
 			status = Component.translatable("options.iris.wynncraftAmbienceDependencyLinked", firstLocalName(linked)).withStyle(ChatFormatting.YELLOW);
 			manager.reload();
@@ -479,7 +479,7 @@ public class AmbiencePackScreen extends Screen {
 
 	private void saveLinkedDependencyAndInstall(String oldDependencyId, AmbienceDependency linked) {
 		try {
-			this.minecraft.setScreen(this);
+			this.minecraft.gui.setScreen(this);
 			manager.replaceDependency(selected().pack().id, oldDependencyId, linked);
 			status = Component.translatable("options.iris.wynncraftAmbienceDependencyLinked", firstLocalName(linked)).withStyle(ChatFormatting.YELLOW);
 			manager.reload();
@@ -566,8 +566,8 @@ public class AmbiencePackScreen extends Screen {
 
 	private void offerDependencyLinkBeforeInstall(AmbienceDependency dependency) {
 		String localName = firstLocalName(dependency);
-		this.minecraft.setScreen(new ConfirmScreen(confirmed -> {
-			this.minecraft.setScreen(this);
+		this.minecraft.gui.setScreen(new ConfirmScreen(confirmed -> {
+			this.minecraft.gui.setScreen(this);
 			if (confirmed) {
 				linkDependencyBeforeInstall(dependency, localName);
 			} else {
@@ -601,8 +601,8 @@ public class AmbiencePackScreen extends Screen {
 						updateButtons();
 						return;
 					}
-					this.minecraft.setScreen(new AmbienceDependencySelectionScreen(this, localName, candidates, chosen -> {
-						this.minecraft.setScreen(this);
+					this.minecraft.gui.setScreen(new AmbienceDependencySelectionScreen(this, localName, candidates, chosen -> {
+						this.minecraft.gui.setScreen(this);
 						if (isModrinthDependency(chosen)) {
 							saveLinkedDependencyAndInstall(dependency.id, chosen);
 						} else {
@@ -634,7 +634,7 @@ public class AmbiencePackScreen extends Screen {
 		}
 		AmbienceRuntime.WarmupStartResult result = AmbienceRuntime.startWarmSelectedPackProfiles("manual");
 		if (result.started()) {
-			this.minecraft.setScreen(new AmbienceWarmupScreen(this, false));
+			this.minecraft.gui.setScreen(new AmbienceWarmupScreen(this, false));
 			return;
 		}
 		status = result.alreadyWarm()
@@ -677,7 +677,7 @@ public class AmbiencePackScreen extends Screen {
 		}
 		AmbienceRuntime.WarmupStartResult result = AmbienceRuntime.startWarmSelectedPackProfiles("auto");
 		if (result.started()) {
-			this.minecraft.setScreen(new AmbienceWarmupScreen(this, true));
+			this.minecraft.gui.setScreen(new AmbienceWarmupScreen(this, true));
 		} else if (result.alreadyWarm()) {
 			status = Component.translatable("options.iris.wynncraftAmbienceWarmupAlreadyPrepared", result.totalProfiles());
 		}
@@ -694,7 +694,7 @@ public class AmbiencePackScreen extends Screen {
 		}
 
 		@Override
-		protected void renderContents(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+		protected void renderContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 			GuiUtil.drawButton(guiGraphics, this.getX(), this.getY(), this.getWidth(), this.getHeight(), this.isHoveredOrFocused(), !this.isActive());
 			GuiUtil.Icon renderedIcon = this.isHoveredOrFocused() && this.isActive() ? hoveredIcon : icon;
 			int iconX = this.getX() + (this.getWidth() - renderedIcon.getWidth()) / 2;

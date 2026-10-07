@@ -13,7 +13,7 @@ import net.irisshaders.iris.uniforms.transforms.SmoothedFloat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -21,7 +21,6 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -163,7 +162,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
@@ -183,7 +182,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		}
 		double mouseX = event.x();
 		double mouseY = event.y();
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_1 && handleSidebarClick(mouseX, mouseY)) {
+		if (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && handleSidebarClick(mouseX, mouseY)) {
 			return true;
 		}
 		if (mapAreaContains(mouseX, mouseY)) {
@@ -191,11 +190,11 @@ public class AmbienceRegionEditorScreen extends Screen {
 				status = Component.translatable("options.iris.wynncraftAmbienceRegionNoProfiles").withStyle(ChatFormatting.YELLOW);
 				return false;
 			}
-			if (event.button() == GLFW.GLFW_MOUSE_BUTTON_2) {
+			if (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT) {
 				panning = true;
 				return true;
 			}
-			if (event.button() != GLFW.GLFW_MOUSE_BUTTON_1) {
+			if (event.button() != com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) {
 				return false;
 			}
 			MapViewport viewport = viewport();
@@ -232,7 +231,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 				return true;
 			}
 		}
-		if (tool == Tool.ERASE && event.button() == GLFW.GLFW_MOUSE_BUTTON_1 && mapAreaContains(mouseX, mouseY)) {
+		if (tool == Tool.ERASE && event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && mapAreaContains(mouseX, mouseY)) {
 			return eraseAt(mouseX, mouseY);
 		}
 		return super.mouseDragged(event, dragX, dragY);
@@ -240,16 +239,16 @@ public class AmbienceRegionEditorScreen extends Screen {
 
 	private void openAddPreset() {
 		AmbienceProfileSelectionScreen profileScreen = new AmbienceProfileSelectionScreen(parent, packId);
-		this.minecraft.setScreen(new AmbiencePresetCreateScreen(profileScreen, packId));
+		this.minecraft.gui.setScreen(new AmbiencePresetCreateScreen(profileScreen, packId));
 	}
 
 	@Override
 	public boolean mouseReleased(MouseButtonEvent event) {
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_2 && panning) {
+		if (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT && panning) {
 			panning = false;
 			return true;
 		}
-		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_1 && drawing) {
+		if (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && drawing) {
 			if (tool == Tool.BOX) {
 				finishBox();
 			}
@@ -285,18 +284,18 @@ public class AmbienceRegionEditorScreen extends Screen {
 			clearActiveDrawing();
 			return true;
 		}
-		if ((event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER)
+		if ((event.key() == com.mojang.blaze3d.platform.InputConstants.KEY_RETURN || event.key() == 335)
 			&& tool == Tool.FREEFORM && activePoints.size() >= 3) {
 			finishFreeform();
 			return true;
 		}
 		if (tool == Tool.PRIORITY && selectedRegionIndex >= 0 && selectedRegionIndex < regions.size()) {
 			int key = event.key();
-			if (key == GLFW.GLFW_KEY_UP || key == GLFW.GLFW_KEY_EQUAL || key == GLFW.GLFW_KEY_KP_ADD) {
+			if (key == com.mojang.blaze3d.platform.InputConstants.KEY_UP || key == com.mojang.blaze3d.platform.InputConstants.KEY_EQUALS || key == 334) {
 				changeRegionPriority(selectedRegionIndex, 1);
 				return true;
 			}
-			if (key == GLFW.GLFW_KEY_DOWN || key == GLFW.GLFW_KEY_MINUS || key == GLFW.GLFW_KEY_KP_SUBTRACT) {
+			if (key == com.mojang.blaze3d.platform.InputConstants.KEY_DOWN || key == com.mojang.blaze3d.platform.InputConstants.KEY_MINUS || key == 333) {
 				changeRegionPriority(selectedRegionIndex, -1);
 				return true;
 			}
@@ -307,8 +306,8 @@ public class AmbienceRegionEditorScreen extends Screen {
 	@Override
 	public void onClose() {
 		if (!undoStack.isEmpty() && minecraft != null) {
-			minecraft.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(confirmed -> {
-				minecraft.setScreen(this);
+			minecraft.gui.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(confirmed -> {
+				minecraft.gui.setScreen(this);
 				if (confirmed) {
 					saveAndClose();
 				} else {
@@ -352,7 +351,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		status = Component.translatable("options.iris.wynncraftAmbienceEditingPack", pack.displayName());
 	}
 
-	private void renderSidebar(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+	private void renderSidebar(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
 		int x = sidebarX();
 		int y = TOP;
 		int width = sidebarWidth();
@@ -373,7 +372,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		guiGraphics.disableScissor();
 	}
 
-	private void renderProfileRow(GuiGraphics guiGraphics, AmbienceProfile profile, int x, int y, int width, int height, int mouseX, int mouseY) {
+	private void renderProfileRow(GuiGraphicsExtractor guiGraphics, AmbienceProfile profile, int x, int y, int width, int height, int mouseX, int mouseY) {
 		boolean selected = profile.id.equals(selectedProfileId);
 		boolean hovered = mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
 		if (selected || hovered) {
@@ -398,7 +397,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		guiGraphics.drawString(font, count, x + width - font.width(count) - 4, y + 16, 0xFFCCCCCC);
 	}
 
-	private void renderMap(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+	private void renderMap(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
 		MapViewport viewport = viewport();
 		GuiUtil.drawPanel(guiGraphics, viewport.x, viewport.y, viewport.width, viewport.height);
 		guiGraphics.enableScissor(viewport.x + 1, viewport.y + 1, viewport.x + viewport.width - 1, viewport.y + viewport.height - 1);
@@ -415,7 +414,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		}
 	}
 
-	private void renderMapBackground(GuiGraphics guiGraphics, MapViewport viewport) {
+	private void renderMapBackground(GuiGraphicsExtractor guiGraphics, MapViewport viewport) {
 		guiGraphics.fill(RenderPipelines.GUI, viewport.x + 1, viewport.y + 1, viewport.x + viewport.width - 1, viewport.y + viewport.height - 1, 0xFF111318);
 		int gridColor = 0x334E6A7A;
 		for (int worldX = -3000; worldX <= 3000; worldX += 512) {
@@ -428,7 +427,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		}
 	}
 
-	private void renderMapTiles(GuiGraphics guiGraphics, MapViewport viewport) {
+	private void renderMapTiles(GuiGraphicsExtractor guiGraphics, MapViewport viewport) {
 		if (mapTiles == null) {
 			return;
 		}
@@ -449,7 +448,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		}
 	}
 
-	private void renderRegions(GuiGraphics guiGraphics, MapViewport viewport) {
+	private void renderRegions(GuiGraphicsExtractor guiGraphics, MapViewport viewport) {
 		List<AmbienceRegion> sorted = regions.stream()
 			.sorted(Comparator.comparing(region -> selectedProfileId.equals(region.profile) ? 1 : 0))
 			.toList();
@@ -463,7 +462,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		}
 	}
 
-	private void renderPriorityLabels(GuiGraphics guiGraphics, MapViewport viewport) {
+	private void renderPriorityLabels(GuiGraphicsExtractor guiGraphics, MapViewport viewport) {
 		for (int i = 0; i < regions.size(); i++) {
 			AmbienceRegion region = regions.get(i);
 			if (region == null || region.shape == null) {
@@ -513,7 +512,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		return null;
 	}
 
-	private void renderActiveDrawing(GuiGraphics guiGraphics, MapViewport viewport, int mouseX, int mouseY) {
+	private void renderActiveDrawing(GuiGraphicsExtractor guiGraphics, MapViewport viewport, int mouseX, int mouseY) {
 		if (tool == Tool.POLYGON && !activePoints.isEmpty()) {
 			drawAdaptivePolyline(guiGraphics, viewport, activePoints, 0xFFFFFFFF, false, 2);
 		}
@@ -540,7 +539,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		}
 	}
 
-	private void drawVertexMarker(GuiGraphics guiGraphics, MapViewport viewport, AmbienceRegion.Point point, int color, boolean large) {
+	private void drawVertexMarker(GuiGraphicsExtractor guiGraphics, MapViewport viewport, AmbienceRegion.Point point, int color, boolean large) {
 		int cx = (int) Math.round(viewport.screenX(point.x));
 		int cy = (int) Math.round(viewport.screenY(point.z));
 		int half = large ? 4 : 3;
@@ -548,7 +547,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		guiGraphics.fill(RenderPipelines.GUI, cx - half + 1, cy - half + 1, cx + half - 1, cy + half - 1, 0xFF1A1C22);
 	}
 
-	private void drawRegion(GuiGraphics guiGraphics, MapViewport viewport, AmbienceRegion region, int color, int thickness) {
+	private void drawRegion(GuiGraphicsExtractor guiGraphics, MapViewport viewport, AmbienceRegion region, int color, int thickness) {
 		if (region == null || region.shape == null) {
 			return;
 		}
@@ -567,7 +566,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 
 	// Draws a polyline with a dark casing under any segment whose colour would be hard to read against the map
 	// behind it. The casing is a separate pass so the dark underlay never covers the coloured line at vertices.
-	private void drawAdaptivePolyline(GuiGraphics guiGraphics, MapViewport viewport, List<AmbienceRegion.Point> points, int color, boolean closed, int thickness) {
+	private void drawAdaptivePolyline(GuiGraphicsExtractor guiGraphics, MapViewport viewport, List<AmbienceRegion.Point> points, int color, boolean closed, int thickness) {
 		if (points.size() < 2) {
 			return;
 		}
@@ -580,7 +579,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		drawPolyline(guiGraphics, viewport, points, color, closed, thickness);
 	}
 
-	private void maybeDrawCasing(GuiGraphics guiGraphics, MapViewport viewport, AmbienceRegion.Point a, AmbienceRegion.Point b, int color, int thickness) {
+	private void maybeDrawCasing(GuiGraphicsExtractor guiGraphics, MapViewport viewport, AmbienceRegion.Point a, AmbienceRegion.Point b, int color, int thickness) {
 		if (segmentNeedsCasing(color, a, b)) {
 			drawWorldLine(guiGraphics, viewport, a, b, LINE_CASING_COLOR, thickness + 2);
 		}
@@ -630,7 +629,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		return channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
 	}
 
-	private void drawPolyline(GuiGraphics guiGraphics, MapViewport viewport, List<AmbienceRegion.Point> points, int color, boolean closed, int thickness) {
+	private void drawPolyline(GuiGraphicsExtractor guiGraphics, MapViewport viewport, List<AmbienceRegion.Point> points, int color, boolean closed, int thickness) {
 		if (points.size() < 2) {
 			return;
 		}
@@ -642,7 +641,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		}
 	}
 
-	private void drawCircle(GuiGraphics guiGraphics, MapViewport viewport, double centerX, double centerZ, double radius, int color, int thickness) {
+	private void drawCircle(GuiGraphicsExtractor guiGraphics, MapViewport viewport, double centerX, double centerZ, double radius, int color, int thickness) {
 		List<AmbienceRegion.Point> points = new ArrayList<>(48);
 		for (int i = 0; i < 48; i++) {
 			double angle = Math.PI * 2.0 * i / 48.0;
@@ -651,7 +650,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		drawAdaptivePolyline(guiGraphics, viewport, points, color, true, thickness);
 	}
 
-	private void drawWorldLine(GuiGraphics guiGraphics, MapViewport viewport, AmbienceRegion.Point start, AmbienceRegion.Point end, int color, int thickness) {
+	private void drawWorldLine(GuiGraphicsExtractor guiGraphics, MapViewport viewport, AmbienceRegion.Point start, AmbienceRegion.Point end, int color, int thickness) {
 		ScreenLine line = clipLine(
 			viewport,
 			viewport.screenX(start.x),
@@ -705,7 +704,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		return new ScreenLine(x1 + start * dx, y1 + start * dy, x1 + end * dx, y1 + end * dy);
 	}
 
-	private void drawLine(GuiGraphics guiGraphics, int x1, int y1, int x2, int y2, int color, int thickness) {
+	private void drawLine(GuiGraphicsExtractor guiGraphics, int x1, int y1, int x2, int y2, int color, int thickness) {
 		// Centre the stroke on the path (offset by half its width) so a thicker casing grows symmetrically around the
 		// line instead of extending entirely to one side.
 		int half = thickness / 2;
@@ -983,7 +982,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 			undoStack.clear();
 			redoStack.clear();
 			if (minecraft != null) {
-				minecraft.setScreen(parent);
+				minecraft.gui.setScreen(parent);
 			}
 		} catch (IOException e) {
 			Iris.logger.warn("Failed to save ambience regions", e);
@@ -996,7 +995,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		redoStack.clear();
 		clearActiveDrawing();
 		if (minecraft != null) {
-			minecraft.setScreen(parent);
+			minecraft.gui.setScreen(parent);
 		}
 	}
 
@@ -1295,7 +1294,7 @@ public class AmbienceRegionEditorScreen extends Screen {
 		return Math.max(min, Math.min(max, value));
 	}
 
-	private void drawCenteredTruncated(GuiGraphics guiGraphics, Component component, int y, int color) {
+	private void drawCenteredTruncated(GuiGraphicsExtractor guiGraphics, Component component, int y, int color) {
 		Component rendered = component;
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());

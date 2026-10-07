@@ -251,7 +251,7 @@ public final class AmbienceRuntime {
 		if (!result.started()) {
 			return false;
 		}
-		minecraft.setScreen(new AmbienceWarmupScreen(null, true));
+		minecraft.gui.setScreen(new AmbienceWarmupScreen(null, true));
 		return true;
 	}
 

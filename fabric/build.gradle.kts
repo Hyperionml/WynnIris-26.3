@@ -38,7 +38,9 @@ base {
     archivesName.set("WynnIris")
 }
 
-tasks.named<org.gradle.jvm.tasks.Jar>("remapJar") {
+// NOTE (26.3 port): under the non-remapping Loom used by MC 26.x there is no
+// `remapJar` task; the plain `jar` task is the final artifact.
+tasks.named<org.gradle.jvm.tasks.Jar>("jar") {
     archiveVersion.set(
         if (project.hasProperty("build.release")) "${WYNNIRIS_VERSION}+${MINECRAFT_VERSION}-fabric"
         else "${WYNNIRIS_VERSION}-experimental+${MINECRAFT_VERSION}-fabric"

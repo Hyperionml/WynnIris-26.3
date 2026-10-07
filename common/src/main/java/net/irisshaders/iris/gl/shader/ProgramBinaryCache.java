@@ -1,6 +1,6 @@
 package net.irisshaders.iris.gl.shader;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.renderpearl.backend.opengl.GlStateManager;
 import net.irisshaders.iris.gui.option.WynncraftDebugLog;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBGetProgramBinary;

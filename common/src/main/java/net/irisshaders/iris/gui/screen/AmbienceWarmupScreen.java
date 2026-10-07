@@ -5,7 +5,7 @@ import net.irisshaders.iris.gui.element.screen.IrisButton;
 import net.irisshaders.iris.uniforms.FrameUpdateNotifier;
 import net.irisshaders.iris.uniforms.transforms.SmoothedFloat;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
@@ -48,7 +48,7 @@ public class AmbienceWarmupScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
@@ -116,7 +116,7 @@ public class AmbienceWarmupScreen extends Screen {
 		if (AmbienceRuntime.getWarmupProgress().running()) {
 			return;
 		}
-		this.minecraft.setScreen(parent);
+		this.minecraft.gui.setScreen(parent);
 	}
 
 	private void closeOrCancel() {
@@ -124,7 +124,7 @@ public class AmbienceWarmupScreen extends Screen {
 		if (progress.running()) {
 			AmbienceRuntime.cancelWarmup();
 		}
-		this.minecraft.setScreen(parent);
+		this.minecraft.gui.setScreen(parent);
 	}
 
 	private void updateButton() {
@@ -144,7 +144,7 @@ public class AmbienceWarmupScreen extends Screen {
 		}
 
 		autoClosed = true;
-		this.minecraft.setScreen(parent);
+		this.minecraft.gui.setScreen(parent);
 	}
 
 	private Component statusText(AmbienceRuntime.WarmupProgress progress) {
@@ -174,7 +174,7 @@ public class AmbienceWarmupScreen extends Screen {
 		return String.format("%.1f s", millis / 1000.0);
 	}
 
-	private void drawCenteredTruncated(GuiGraphics guiGraphics, Component component, int y, int color) {
+	private void drawCenteredTruncated(GuiGraphicsExtractor guiGraphics, Component component, int y, int color) {
 		Component rendered = component;
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());

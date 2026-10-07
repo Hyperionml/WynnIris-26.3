@@ -1,7 +1,7 @@
 package net.irisshaders.iris.gui.screen;
 
 import net.irisshaders.iris.gui.element.widget.AbstractElementWidget;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.nio.file.Path;

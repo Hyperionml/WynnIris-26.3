@@ -15,7 +15,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ComponentPath;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -94,7 +94,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 		this.addRenderableWidget(this.shaderPackList);
 
 		int bottomCenter = this.width / 2 - 50;
-		this.addRenderableWidget(IrisButton.iris$builder(CommonComponents.GUI_CANCEL, button -> this.minecraft.setScreen(parent), buttonTransition)
+		this.addRenderableWidget(IrisButton.iris$builder(CommonComponents.GUI_CANCEL, button -> this.minecraft.gui.setScreen(parent), buttonTransition)
 			.bounds(bottomCenter - 52, this.height - 31, 100, 20)
 			.build());
 		this.createButton = this.addRenderableWidget(IrisButton.iris$builder(Component.translatable(isChangingShader() ? "options.iris.apply" : "options.iris.create"), button -> createPreset(), buttonTransition)
@@ -104,7 +104,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
@@ -126,7 +126,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 	@Override
 	public boolean keyPressed(KeyEvent event) {
 		if (event.isEscape()) {
-			this.minecraft.setScreen(parent);
+			this.minecraft.gui.setScreen(parent);
 			return true;
 		}
 		return super.keyPressed(event);
@@ -174,7 +174,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 				} else if (result.dependency != null) {
 					finishWithDependency(presetId, shaderPack, result.dependency);
 				} else if (result.candidates != null && !result.candidates.isEmpty()) {
-					this.minecraft.setScreen(new AmbienceDependencySelectionScreen(this, shaderPack, result.candidates, dependency -> finishWithDependency(presetId, shaderPack, dependency)));
+					this.minecraft.gui.setScreen(new AmbienceDependencySelectionScreen(this, shaderPack, result.candidates, dependency -> finishWithDependency(presetId, shaderPack, dependency)));
 				} else {
 					finishWithDependency(presetId, shaderPack, AmbienceDependencyResolver.localDependency(shaderPack));
 				}
@@ -194,7 +194,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 			} else {
 				parent.onPresetCreated(profile.id);
 			}
-			this.minecraft.setScreen(parent);
+			this.minecraft.gui.setScreen(parent);
 		} catch (IOException e) {
 			Iris.logger.warn("Failed to create ambience preset", e);
 			status = Component.literal(e.getMessage() == null ? "Save failed" : e.getMessage()).withStyle(ChatFormatting.RED);
@@ -225,7 +225,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 		return candidate;
 	}
 
-	private void drawCenteredTruncated(GuiGraphics guiGraphics, Component component, int y, int color) {
+	private void drawCenteredTruncated(GuiGraphicsExtractor guiGraphics, Component component, int y, int color) {
 		Component rendered = component;
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());
@@ -255,7 +255,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 		}
 
 		@Override
-		protected void renderListBackground(GuiGraphics guiGraphics) {
+		protected void renderListBackground(GuiGraphicsExtractor guiGraphics) {
 			float transition = listTransition.getAsFloat();
 			if (transition < 0.02f) {
 				return;
@@ -266,7 +266,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 		}
 
 		@Override
-		protected void renderListSeparators(GuiGraphics guiGraphics) {
+		protected void renderListSeparators(GuiGraphicsExtractor guiGraphics) {
 			float transition = listTransition.getAsFloat();
 			if (transition < 0.02f) {
 				return;
@@ -303,7 +303,7 @@ public class AmbiencePresetCreateScreen extends Screen {
 		}
 
 		@Override
-		public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();

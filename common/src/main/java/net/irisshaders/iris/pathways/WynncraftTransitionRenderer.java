@@ -1,11 +1,11 @@
 package net.irisshaders.iris.pathways;
 
 import com.google.common.collect.ImmutableSet;
-import com.mojang.blaze3d.buffers.GpuBuffer;
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
+import com.mojang.renderpearl.backend.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.renderpearl.api.vertex.VertexFormat;
 import net.irisshaders.iris.gl.IrisRenderSystem;
 import net.irisshaders.iris.gl.program.Program;
 import net.irisshaders.iris.gl.program.ProgramBuilder;
@@ -153,11 +153,11 @@ public class WynncraftTransitionRenderer {
 		this.program = builder.build();
 	}
 
-	public void render(com.mojang.blaze3d.opengl.GlTexture colorTex, float gameTime, int type, float progress) {
+	public void render(com.mojang.renderpearl.backend.opengl.GlTexture colorTex, float gameTime, int type, float progress) {
 		render(colorTex, gameTime, type, progress, 0x000000);
 	}
 
-	public void render(com.mojang.blaze3d.opengl.GlTexture colorTex, float gameTime, int type, float progress, int rgbColor) {
+	public void render(com.mojang.renderpearl.backend.opengl.GlTexture colorTex, float gameTime, int type, float progress, int rgbColor) {
 		if (type <= 0) return;
 
 		this.colorTexId = colorTex.iris$getGlId();

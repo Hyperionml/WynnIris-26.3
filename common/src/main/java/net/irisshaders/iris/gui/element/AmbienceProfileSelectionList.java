@@ -8,7 +8,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ComponentPath;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSelectionList;
 import net.minecraft.client.gui.navigation.FocusNavigationEvent;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
@@ -68,7 +68,7 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 	}
 
 	@Override
-	protected void renderListBackground(GuiGraphics guiGraphics) {
+	protected void renderListBackground(GuiGraphicsExtractor guiGraphics) {
 		float transition = screen.listTransition.getAsFloat();
 		if (transition < 0.02f) {
 			return;
@@ -79,7 +79,7 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 	}
 
 	@Override
-	protected void renderListSeparators(GuiGraphics guiGraphics) {
+	protected void renderListSeparators(GuiGraphicsExtractor guiGraphics) {
 		float transition = screen.listTransition.getAsFloat();
 		if (transition < 0.02f) {
 			return;
@@ -118,7 +118,7 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 		}
 
 		@Override
-		public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();
@@ -150,7 +150,7 @@ public class AmbienceProfileSelectionList extends IrisObjectSelectionList<Ambien
 		}
 
 		@Override
-		public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
+		public void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean isHovered, float tickDelta) {
 			int x = getContentX();
 			int y = getContentY();
 			int entryWidth = getContentWidth();

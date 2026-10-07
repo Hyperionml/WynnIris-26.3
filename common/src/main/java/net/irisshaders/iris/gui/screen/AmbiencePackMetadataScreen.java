@@ -8,7 +8,7 @@ import net.irisshaders.iris.gui.option.IrisVideoSettings;
 import net.irisshaders.iris.uniforms.FrameUpdateNotifier;
 import net.irisshaders.iris.uniforms.transforms.SmoothedFloat;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -62,7 +62,7 @@ public class AmbiencePackMetadataScreen extends Screen {
 		this.addRenderableWidget(this.authorsBox);
 
 		int bottomCenter = this.width / 2 - 50;
-		this.addRenderableWidget(IrisButton.iris$builder(CommonComponents.GUI_CANCEL, button -> this.minecraft.setScreen(parent), buttonTransition)
+		this.addRenderableWidget(IrisButton.iris$builder(CommonComponents.GUI_CANCEL, button -> this.minecraft.gui.setScreen(parent), buttonTransition)
 			.bounds(bottomCenter - 52, this.height - 31, 100, 20)
 			.build());
 		this.createButton = this.addRenderableWidget(IrisButton.iris$builder(Component.translatable("options.iris.create"), button -> createPack(), buttonTransition)
@@ -79,7 +79,7 @@ public class AmbiencePackMetadataScreen extends Screen {
 	}
 
 	@Override
-	public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 		super.render(guiGraphics, mouseX, mouseY, delta);
@@ -94,7 +94,7 @@ public class AmbiencePackMetadataScreen extends Screen {
 	@Override
 	public boolean keyPressed(KeyEvent event) {
 		if (event.isEscape()) {
-			this.minecraft.setScreen(parent);
+			this.minecraft.gui.setScreen(parent);
 			return true;
 		}
 		return super.keyPressed(event);
@@ -129,7 +129,7 @@ public class AmbiencePackMetadataScreen extends Screen {
 		}
 	}
 
-	private void drawCenteredTruncated(GuiGraphics guiGraphics, Component component, int y, int color) {
+	private void drawCenteredTruncated(GuiGraphicsExtractor guiGraphics, Component component, int y, int color) {
 		Component rendered = component;
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());

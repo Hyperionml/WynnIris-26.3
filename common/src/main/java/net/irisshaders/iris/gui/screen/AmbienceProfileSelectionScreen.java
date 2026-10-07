@@ -9,7 +9,7 @@ import net.irisshaders.iris.gui.element.screen.IrisButton;
 import net.irisshaders.iris.uniforms.FrameUpdateNotifier;
 import net.irisshaders.iris.uniforms.transforms.SmoothedFloat;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -84,14 +84,14 @@ public class AmbienceProfileSelectionScreen extends Screen {
 		deleteButton = this.addRenderableWidget(IrisButton.iris$builder(Component.translatable("options.iris.delete"), button -> deleteSelectedProfile(), buttonTransition)
 			.bounds(bottomLeft + 208, this.height - 27, 100, 20)
 			.build());
-		this.addRenderableWidget(IrisButton.iris$builder(CommonComponents.GUI_DONE, button -> this.minecraft.setScreen(parent), buttonTransition)
+		this.addRenderableWidget(IrisButton.iris$builder(CommonComponents.GUI_DONE, button -> this.minecraft.gui.setScreen(parent), buttonTransition)
 			.bounds(bottomLeft + 312, this.height - 27, 100, 20)
 			.build());
 		updateButtons();
 	}
 
 	@Override
-	public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+	public void render(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float delta) {
 		notifier.onNewFrame();
 		backgroundInit = 1.0f;
 
@@ -129,7 +129,7 @@ public class AmbienceProfileSelectionScreen extends Screen {
 			status = Component.translatable("options.iris.wynncraftAmbienceProfileMissingShader").withStyle(ChatFormatting.RED);
 			return;
 		}
-		this.minecraft.setScreen(new AmbienceProfileSettingsScreen(this, packId, profileId));
+		this.minecraft.gui.setScreen(new AmbienceProfileSettingsScreen(this, packId, profileId));
 	}
 
 	private void openSelectedProfile() {
@@ -165,7 +165,7 @@ public class AmbienceProfileSelectionScreen extends Screen {
 		if (loadedPack.isEmpty()) {
 			return;
 		}
-		this.minecraft.setScreen(new AmbiencePresetCreateScreen(this, packId));
+		this.minecraft.gui.setScreen(new AmbiencePresetCreateScreen(this, packId));
 	}
 
 	private void reloadPack() {
@@ -188,7 +188,7 @@ public class AmbienceProfileSelectionScreen extends Screen {
 
 	private void renameSelectedProfile() {
 		if (!selectedProfileId.isBlank()) {
-			this.minecraft.setScreen(new AmbienceProfileRenameScreen(this, packId, selectedProfileId));
+			this.minecraft.gui.setScreen(new AmbienceProfileRenameScreen(this, packId, selectedProfileId));
 		}
 	}
 
@@ -205,7 +205,7 @@ public class AmbienceProfileSelectionScreen extends Screen {
 
 	private void changeSelectedShader() {
 		if (!selectedProfileId.isBlank()) {
-			this.minecraft.setScreen(new AmbiencePresetCreateScreen(this, packId, selectedProfileId));
+			this.minecraft.gui.setScreen(new AmbiencePresetCreateScreen(this, packId, selectedProfileId));
 		}
 	}
 
@@ -225,7 +225,7 @@ public class AmbienceProfileSelectionScreen extends Screen {
 		if (profileId.isBlank()) {
 			return;
 		}
-		this.minecraft.setScreen(new ConfirmScreen(confirmed -> {
+		this.minecraft.gui.setScreen(new ConfirmScreen(confirmed -> {
 			if (confirmed) {
 				try {
 					manager.deleteProfile(packId, profileId);
@@ -237,7 +237,7 @@ public class AmbienceProfileSelectionScreen extends Screen {
 					status = Component.literal(e.getMessage() == null ? "Delete failed" : e.getMessage()).withStyle(ChatFormatting.RED);
 				}
 			}
-			this.minecraft.setScreen(this);
+			this.minecraft.gui.setScreen(this);
 			updateButtons();
 		}, Component.translatable("options.iris.wynncraftAmbienceProfileDeleteTitle"),
 			Component.translatable("options.iris.wynncraftAmbienceProfileDeleteMessage", profileId),
@@ -268,7 +268,7 @@ public class AmbienceProfileSelectionScreen extends Screen {
 		}
 	}
 
-	private void drawCenteredTruncated(GuiGraphics guiGraphics, Component component, int y, int color) {
+	private void drawCenteredTruncated(GuiGraphicsExtractor guiGraphics, Component component, int y, int color) {
 		Component rendered = component;
 		if (this.font.width(component) > this.width - 20) {
 			rendered = Component.literal(this.font.plainSubstrByWidth(component.getString(), this.width - 32) + "...").setStyle(component.getStyle());

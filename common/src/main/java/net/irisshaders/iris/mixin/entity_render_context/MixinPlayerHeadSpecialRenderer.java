@@ -20,11 +20,13 @@ public class MixinPlayerHeadSpecialRenderer {
 	@Final
 	private SkullModelBase modelBase;
 
-	@Inject(method = "submit(Lnet/minecraft/client/renderer/PlayerSkinRenderCache$RenderInfo;Lnet/minecraft/world/item/ItemDisplayContext;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;IIZI)V",
+	@Inject(method = "submit(Lnet/minecraft/client/renderer/PlayerSkinRenderCache$RenderInfo;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;IIZI)V",
 		at = @At("RETURN"))
-	private void iris$submitWynncraftMountArmor(PlayerSkinRenderCache.RenderInfo renderInfo, ItemDisplayContext displayContext,
+	private void iris$submitWynncraftMountArmor(PlayerSkinRenderCache.RenderInfo renderInfo,
 												PoseStack poseStack, SubmitNodeCollector submitNodeCollector, int packedLight,
 												int packedOverlay, boolean hasFoil, int color, CallbackInfo ci) {
-		WynncraftMountArmorOverlay.submitPlayerHeadOverlays(renderInfo, displayContext, poseStack, submitNodeCollector, packedLight, modelBase);
+		// 26.3: PlayerHeadSpecialRenderer#submit no longer receives an ItemDisplayContext;
+		// this renderer only ever draws heads, so report HEAD.
+		WynncraftMountArmorOverlay.submitPlayerHeadOverlays(renderInfo, ItemDisplayContext.HEAD, poseStack, submitNodeCollector, packedLight, modelBase);
 	}
 }

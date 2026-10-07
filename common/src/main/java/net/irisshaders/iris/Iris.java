@@ -119,7 +119,11 @@ public class Iris {
 	private static IrisConfig irisConfig;
 	private static FileSystem zipFileSystem;
 	private static KeyMapping reloadKeybind;
-	private static final KeyMapping.Category irisKeybindCategory = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("iris", "keybinds"));
+	// 26.3: the "iris:keybinds" category is registered exactly once, in IrisVKOnly.
+	// WynnIris's 1.21.11 tree registered its own copy here, which on 26.3 throws
+	// IllegalArgumentException("Category 'iris:keybinds' is already registered")
+	// during startup and aborts the resource reload.
+	private static final KeyMapping.Category irisKeybindCategory = IrisVKOnly.irisKeybindCategory;
 	private static KeyMapping toggleShadersKeybind;
 	private static KeyMapping shaderpackScreenKeybind;
 	private static KeyMapping wireframeKeybind;

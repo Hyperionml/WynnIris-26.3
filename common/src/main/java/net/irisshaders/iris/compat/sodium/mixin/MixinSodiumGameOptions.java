@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(VideoSettingsScreen.class)
 public class MixinSodiumGameOptions {
-	@WrapOperation(method = "renderIconWithSpacing", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIFFIIIIIII)V"))
+	@WrapOperation(method = "renderIconWithSpacing", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blit(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIFFIIIIIII)V"))
 	private static void iris$useMonoConfigIcon(GuiGraphicsExtractor instance, RenderPipeline renderPipeline, Identifier identifier, int i, int j, float f, float g, int k, int l, int m, int n, int o, int p, int q, Operation<Void> original) {
 		Identifier newIdentifier = identifier;
 
@@ -23,7 +23,7 @@ public class MixinSodiumGameOptions {
 		original.call(instance, renderPipeline, newIdentifier, i, j, f, g, k, l, m, n, o, p, q);
 	}
 
-	@WrapOperation(method = "renderIconWithSpacing", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIFFIIIIII)V"))
+	@WrapOperation(method = "renderIconWithSpacing", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blit(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIFFIIIIII)V"))
 	private static void iris$useColorConfigIcon(GuiGraphicsExtractor instance, RenderPipeline renderPipeline, Identifier identifier, int i, int j, float f, float g, int k, int l, int m, int n, int o, int p, Operation<Void> original) {
 		Identifier newIdentifier = identifier;
 
